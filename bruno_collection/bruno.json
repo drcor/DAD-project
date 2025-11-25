@@ -5,5 +5,11 @@
   "ignore": [
     "node_modules",
     ".git"
-  ]
+  ],
+  "size": 0.0010318756103515625,
+  "filesCount": 6,
+  "presets": {
+    "requestType": "http",
+    "requestUrl": ""
+  }
 }
