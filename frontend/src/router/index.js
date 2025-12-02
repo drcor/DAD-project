@@ -1,3 +1,4 @@
+import SinglePlayerPage from '@/pages/game/SinglePlayerPage.vue'
 import HomePage from '@/pages/home/HomePage.vue'
 import LoginPage from '@/pages/login/LoginPage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
@@ -28,6 +29,15 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: '/game',
+      children: [
+        {
+          path: 'singleplayer',
+          component: SinglePlayerPage
+        }
+      ]
+    }
   ],
 })
 
