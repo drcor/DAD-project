@@ -38,4 +38,34 @@ class AuthController extends Controller
             'message' => 'Logged out successfully',
         ]);
     }
+
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'nickname' => 'required|string|unique:users,nickname',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:3',
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'nickname' => $validated['nickname'],
+            'email' => $validated['email'],
+            'type' => 'P', // Player
+            'password' => Hash::make($validated['password']),
+            'coins_balance' => 10 // Welcome bonus
+        ]);
+
+        // Criar registo da transação BONUS
+        CoinTransaction::create([
+            'user_id' => $user->id,
+            'coin_transaction_type_id' => 1, // "Bonus" ID
+            'coins' => 10,
+            'transaction_datetime' => now()
+        ]);
+
+        return response()->json($user, 201);
+    }
+
 }
