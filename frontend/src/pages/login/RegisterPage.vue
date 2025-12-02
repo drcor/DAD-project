@@ -43,9 +43,10 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "vue-router"
 import { toast } from "vue-sonner"
-import api from "@/services/api"
+import { useAPIStore } from "@/stores/api"
 
 const router = useRouter()
+const api = useAPIStore()
 
 const form = ref({
   name: "",
