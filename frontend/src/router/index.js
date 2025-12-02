@@ -3,6 +3,8 @@ import LoginPage from '@/pages/login/LoginPage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
 import WebsocketsPage from '@/pages/testing/WebsocketsPage.vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import RegisterPage from '@/pages/login/RegisterPage.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,6 +16,10 @@ const router = createRouter({
     {
       path: '/login',
       component: LoginPage,
+    },
+    {
+      path: '/register',       
+      component: RegisterPage,
     },
     {
       path: '/testing',
