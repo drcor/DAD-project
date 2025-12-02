@@ -28,6 +28,11 @@ export const useAPIStore = defineStore('api', () => {
     delete axios.defaults.headers.common['Authorization']
   }
 
+  const postRegister = async (data) => {
+  return axios.post(`${API_BASE_URL}/register`, data)
+  }
+
+
   // Users
   const getAuthUser = () => {
     return axios.get(`${API_BASE_URL}/users/me`)
@@ -59,5 +64,6 @@ export const useAPIStore = defineStore('api', () => {
     getAuthUser,
     getGames,
     gameQueryParameters,
+    postRegister,
   }
 })
