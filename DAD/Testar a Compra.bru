@@ -1,0 +1,29 @@
+meta {
+  name: Testar a Compra
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8000/api/transactions
+  body: json
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer
+}
+
+body:json {
+  {
+    "type": "MBWAY",
+    "reference": "912345678",
+    "value": 5
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
