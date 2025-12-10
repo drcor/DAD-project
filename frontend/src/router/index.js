@@ -2,6 +2,7 @@ import HomePage from '@/pages/home/HomePage.vue'
 import LoginPage from '@/pages/login/LoginPage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
 import WebsocketsPage from '@/pages/testing/WebsocketsPage.vue'
+import CoinStore from '@/pages/Coin/CoinStore.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
@@ -27,6 +28,11 @@ const router = createRouter({
           component: WebsocketsPage,
         },
       ],
+    },
+    {
+      path: '/store',
+      name: 'store',
+      component: CoinStore
     },
   ],
 })
