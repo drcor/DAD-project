@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import axios from 'axios'
-import { useUserStore } from '@/stores/auth'
-const userStore = useUserStore()
+import { useAuthStore } from '@/stores/auth'
+const userStore = useAuthStore()
 
 
 // --- Dados do Formulário ---
