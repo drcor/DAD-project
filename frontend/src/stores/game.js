@@ -41,12 +41,12 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Shuffle array of cards
-   * @param {Array} a 
+   * @param {Array} cards 
    */
-  const shuffleCards = (a) => {
-    for (let i = a.length - 1; i > 0; i--) {
+  const shuffleCards = (cards) => {
+    for (let i = cards.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-        ;[a[i], a[j]] = [a[j], a[i]]
+        ;[cards[i], cards[j]] = [cards[j], cards[i]]
     }
   }
 
