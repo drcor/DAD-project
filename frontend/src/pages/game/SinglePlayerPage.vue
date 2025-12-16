@@ -71,8 +71,12 @@ import { useGameStore } from '@/stores/game'
 const gameStore = useGameStore()
 
 const handleCardClick = (card) => {
+  // Prevent playing when game is over or when an end result is present.
+  // closeModal currently clears `gameOver` but preserves `winner`/`endedAt`,
+  // so require `winner` to be null to allow further plays.
   if (
     !gameStore.gameOver &&
+    gameStore.winner == null &&
     gameStore.currentPlayer === 'player' &&
     Object.keys(gameStore.played1).length === 0
   ) {
