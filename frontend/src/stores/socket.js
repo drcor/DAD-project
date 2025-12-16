@@ -1,19 +1,70 @@
 import { defineStore } from 'pinia'
-import { inject } from 'vue'
+import { inject, ref } from 'vue'
+import { useAuthStore } from './auth'
+import { useGameStore } from './game'
 
 export const useSocketStore = defineStore('socket', () => {
-  const socket = inject('socket')
+    const socket = inject('socket')
+    const authStore = useAuthStore()
+    const gameStore = useGameStore()
+    const joined = ref(false)
 
-  const handleConnection = () => {
-    socket.on('connect', () => {
-      console.log(`[Socket] Connected -- ${socket.id}`)
-    })
-    socket.on('disconnect', () => {
-      console.log(`[Socket] Disconnected -- ${socket.id}`)
-    })
-  }
+    const emitJoin = (user) => {
+        if (joined.value) return
+        console.log(`[Socket] Joining Server`)
+        socket.emit('join', user)
+        joined.value = true
+    }
 
-  return {
-    handleConnection,
-  }
+    const emitLeave = () => {
+        socket.emit('leave')
+        console.log(`[Socket] Leaving Server`)
+        joined.value = false
+    }
+
+    const handleConnection = () => {
+        socket.on('connect', () => {
+            console.log(`[Socket] Connected -- ${socket.id}`)
+            if (authStore.isLoggedIn && !joined.value) {
+                emitJoin(authStore.currentUser)
+            }
+        })
+
+        socket.on('disconnect', () => {
+            joined.value = false
+            console.log(`[Socket] Disconnected -- ${socket.id}`)
+        })
+    }
+
+    const emitGetGames = () => {
+        socket.emit('get-games')
+    }
+
+    const handleGameEvents = () => {
+        socket.on('games', (games) => {
+            console.log(`[Socket] server emited games | game count ${games.length}`)
+            gameStore.setGames(games) // Import and instantiate the game store
+        })
+
+        socket.on('game-change', (game) => {
+            gameStore.setMultiplayerGame(game)    
+        })
+    }
+
+    const emitJoinGame = (game) => {
+        console.log(`[Socket] Joining Game ${game.id}`)
+        socket.emit('join-game', game.id, authStore.currentUser.id)
+    }
+
+    const emitFlipCard = (gameID, card) => {socket.emit('flip-card', gameID, card)}
+
+    return {
+        emitJoin,
+        emitLeave,
+        handleConnection,
+        emitGetGames,
+        handleGameEvents,
+        emitJoinGame,
+        emitFlipCard,
+    }
 })
