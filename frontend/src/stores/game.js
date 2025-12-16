@@ -284,12 +284,12 @@ export const useGameStore = defineStore('game', () => {
         playCard(play, false)
       } else {
         // cannot win: play the lowest-value card
-        const minCard = hand2.value.reduce((prev, curr) => ranks[curr.rank] < ranks[prev.rank] ? curr : prev)
+        const minCard = hand2.value.reduce((prev, curr) => cardPoints(curr) < cardPoints(prev) ? curr : prev)
         playCard(minCard, false)
       }
     } else {
       // If first to play, play lowest value card
-      const minCard = hand2.value.reduce((prev, curr) => ranks[curr.rank] < ranks[prev.rank] ? curr : prev);
+      const minCard = hand2.value.reduce((prev, curr) => cardPoints(curr) < cardPoints(prev) ? curr : prev);
       playCard(minCard, false)
     }
   }
@@ -329,7 +329,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   const computePoints = (cards) => {
-    return (cards || []).reduce((sum, c) => sum + (ranks[c.rank] || 0), 0)
+    return (cards || []).reduce((sum, c) => sum + (cardPoints(c) || 0), 0)
   }
 
   const detectGameEnd = () => {
