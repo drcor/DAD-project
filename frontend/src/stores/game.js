@@ -190,7 +190,7 @@ export const useGameStore = defineStore('game', () => {
     if (c1.suit === trump.value.suit) return true;
     if (c2.suit === trump.value.suit) return false;
 
-    return true; // quem joga primeiro ganha se não houver trunfo
+    return true; // the first player wins if there is no trump
   };
 
   const clearPlayedCards = () => {
@@ -263,7 +263,6 @@ export const useGameStore = defineStore('game', () => {
     if (deck.value.length === 1) {
       hand1.value.push(deck.value.shift())
       hand2.value.push(trump.value)
-      trump.value = {}
       return
     }
 
