@@ -19,7 +19,7 @@ import GameCard from './GameCard.vue';
 
 const props = defineProps({
     deck: {
-        type: Object,
+        type: Array,
         required: true,
     },
     trump: {

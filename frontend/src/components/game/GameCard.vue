@@ -1,5 +1,5 @@
 <template>
-    <div class="w-22 aspect-63/88 border border-gray-700 shadow-lg overflow-hidden bg-white grid grid-rows-3" @click="handleClick">
+    <div class="w-22 aspect-63/88 border border-gray-700 shadow-lg overflow-hidden bg-white grid grid-rows-3 select-none" @click="handleClick">
         <div class="flex items-start justify-start p-2 text-lg font-bold">
             {{ card.rank }}
         </div>
