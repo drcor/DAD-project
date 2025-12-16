@@ -3,6 +3,8 @@ import { ref, watch } from 'vue'
 
 export const useGameStore = defineStore('game', () => {
 
+  const TRICK_CLEAR_DELAY_MS = 1000
+
   const ranks = {
     'A': 11, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, 'J': 3, 'Q': 2, 'K': 4
   }
@@ -139,7 +141,7 @@ export const useGameStore = defineStore('game', () => {
 
     if (Object.keys(played1.value).length > 0 && Object.keys(played2.value).length > 0) {
       console.log(card)
-      setTimeout(() => clearPlayedCards(), 1500)
+      setTimeout(() => clearPlayedCards(), TRICK_CLEAR_DELAY_MS)
     }
   }
 
@@ -221,7 +223,7 @@ export const useGameStore = defineStore('game', () => {
           botPlay()
         }
         botTimer.value = null
-      }, 1500)
+      }, TRICK_CLEAR_DELAY_MS)
     }
 
     // After dealing the next trick, check for game end
@@ -313,7 +315,7 @@ export const useGameStore = defineStore('game', () => {
           botPlay()
         }
         botTimer.value = null
-      }, 1500)
+      }, TRICK_CLEAR_DELAY_MS)
     } else {
       // If it becomes the player's turn, cancel any pending bot action
       if (botTimer.value) {
