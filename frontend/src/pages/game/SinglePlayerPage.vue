@@ -41,22 +41,52 @@
   </footer>
 
   <!-- Game over modal -->
-  <div v-if="gameStore.gameOver" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div
+    v-if="gameStore.gameOver"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="game-over-title"
+    class="fixed inset-0 z-50 flex items-center justify-center"
+  >
     <div class="absolute inset-0 bg-black opacity-50"></div>
+
+    <!-- focus sentinel: moves focus to last action when tabbing backwards -->
+    <div
+      tabindex="0"
+      aria-hidden="true"
+      class="sr-only"
+      @focus="$refs.closeBtn && $refs.closeBtn.focus()"
+    ></div>
+
     <div class="relative bg-white rounded-lg p-6 w-96 shadow-lg text-center">
-      <h2 class="text-2xl font-bold mb-4">Game Over</h2>
+      <h2 id="game-over-title" class="text-2xl font-bold mb-4">Game Over</h2>
       <p class="mb-4">
         <span v-if="gameStore.winner === 'player'">You won 🎉</span>
         <span v-else-if="gameStore.winner === 'bot'">Bot won</span>
         <span v-else>It's a draw</span>
       </p>
       <div class="flex justify-center gap-4">
-        <button @click="restart" class="px-4 py-2 bg-green-500 text-white rounded">
+        <button
+          ref="playAgain"
+          @click="restart"
+          class="px-4 py-2 bg-green-500 text-white rounded"
+          autofocus
+        >
           Play again
         </button>
-        <button @click="closeModal" class="px-4 py-2 bg-gray-200 rounded">Close</button>
+        <button ref="closeBtn" @click="closeModal" class="px-4 py-2 bg-gray-200 rounded">
+          Close
+        </button>
       </div>
     </div>
+
+    <!-- focus sentinel: moves focus to first action when tabbing forward -->
+    <div
+      tabindex="0"
+      aria-hidden="true"
+      class="sr-only"
+      @focus="$refs.playAgain && $refs.playAgain.focus()"
+    ></div>
   </div>
 </template>
 
@@ -73,10 +103,11 @@ const gameStore = useGameStore()
 const handleCardClick = (card) => {
   // Prevent playing when game is over or when an end result is present.
   // closeModal currently clears `gameOver` but preserves `winner`/`endedAt`,
-  // so require `winner` to be null to allow further plays.
+  // so require both `winner` and `endedAt` to be null to allow further plays.
   if (
     !gameStore.gameOver &&
     gameStore.winner == null &&
+    gameStore.endedAt == null &&
     gameStore.currentPlayer === 'player' &&
     Object.keys(gameStore.played1).length === 0
   ) {
@@ -85,6 +116,7 @@ const handleCardClick = (card) => {
 }
 
 const restart = () => {
+  gameStore.mode = 'single'
   gameStore.setBoard()
   // deal using current handSize (3 or 9)
   gameStore.dealCards(gameStore.handSize)
@@ -93,11 +125,14 @@ const restart = () => {
 }
 
 const closeModal = () => {
-  // simply reset gameOver so modal closes; keep end state available if needed
+  // close modal and clear end-state so user can continue playing
   gameStore.gameOver = false
+  gameStore.winner = null
+  gameStore.endedAt = null
 }
 
 onMounted(() => {
+  gameStore.mode = 'single'
   gameStore.setBoard()
   gameStore.dealCards(9)
 })

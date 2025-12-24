@@ -25,7 +25,6 @@ export const useGameStore = defineStore('game', () => {
   const spoils2 = ref([])
   const moves = ref(0)
   const beganAt = ref(undefined)
-  // const endedAt = ref(undefined)
   // currentPlayer: 'player' or 'bot' (explicit instead of a boolean)
   const currentPlayer = ref('player')
   // Game mode: 'single' (bot) or 'multi' (human vs human)
@@ -183,9 +182,9 @@ export const useGameStore = defineStore('game', () => {
     const c1 = played1.value
     const c2 = played2.value
     if (c1.suit === c2.suit)
-      // If same suit, higher points wins. In case of equal points the first player (who led)
-      // should win the trick — use >= to award ties to the leader.
-      return cardPoints(c1) >= cardPoints(c2);
+      // If same suit, higher points wins; use strict comparison (>) to match cardBeats
+      // so the second player cannot overturn a tie by playing an equal-value card.
+      return cardPoints(c1) > cardPoints(c2);
 
     if (c1.suit === trump.value.suit) return true;
     if (c2.suit === trump.value.suit) return false;
@@ -195,6 +194,9 @@ export const useGameStore = defineStore('game', () => {
 
   const clearPlayedCards = () => {
     const isPlayer1Winner = wins();
+
+    // increment move counter for each completed trick
+    moves.value++
 
     if (isPlayer1Winner) {
       clearToPlayer1()
@@ -366,10 +368,11 @@ export const useGameStore = defineStore('game', () => {
     played2,
     spoils1,
     spoils2,
-    // replaced by currentPlayer below
+    moves,
     // end state
     gameOver,
     winner,
+    beganAt,
     endedAt,
     // mode & variant
     mode,
