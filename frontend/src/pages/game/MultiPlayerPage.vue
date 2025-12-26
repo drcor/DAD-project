@@ -227,6 +227,23 @@
         <span v-else-if="multiplayerGame.winner === 'draw'">It's a draw</span>
         <span v-else>Opponent won</span>
       </p>
+
+      <!-- Points Display -->
+      <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+        <h3 class="text-sm font-semibold text-gray-700 mb-3">Final Score</h3>
+        <div class="flex justify-around text-center">
+          <div>
+            <div class="text-3xl font-bold text-green-600">{{ myPoints }}</div>
+            <div class="text-xs text-gray-600">Your Points</div>
+          </div>
+          <div class="text-2xl text-gray-400">-</div>
+          <div>
+            <div class="text-3xl font-bold text-red-600">{{ opponentPoints }}</div>
+            <div class="text-xs text-gray-600">Opponent Points</div>
+          </div>
+        </div>
+      </div>
+
       <div class="flex justify-center gap-4">
         <button @click="leaveGame" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
           Leave
@@ -255,6 +272,22 @@
           <span v-else-if="multiplayerGame.winner === 'draw'">Draw - no mark awarded</span>
           <span v-else>Opponent won this game</span>
         </p>
+
+        <!-- Game Points -->
+        <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+          <h3 class="text-xs font-semibold text-gray-700 mb-2">This Game's Points</h3>
+          <div class="flex justify-around text-center">
+            <div>
+              <div class="text-2xl font-bold text-green-600">{{ myPoints }}</div>
+              <div class="text-xs text-gray-600">You</div>
+            </div>
+            <div class="text-xl text-gray-400">-</div>
+            <div>
+              <div class="text-2xl font-bold text-red-600">{{ opponentPoints }}</div>
+              <div class="text-xs text-gray-600">Opponent</div>
+            </div>
+          </div>
+        </div>
 
         <!-- Match score -->
         <div class="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -297,9 +330,25 @@
           <span v-else class="text-red-600">Opponent Won the Match</span>
         </p>
 
+        <!-- Last Game Points -->
+        <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+          <h3 class="text-xs font-semibold text-gray-700 mb-2">Final Game Points</h3>
+          <div class="flex justify-around text-center">
+            <div>
+              <div class="text-2xl font-bold text-green-600">{{ myPoints }}</div>
+              <div class="text-xs text-gray-600">You</div>
+            </div>
+            <div class="text-xl text-gray-400">-</div>
+            <div>
+              <div class="text-2xl font-bold text-red-600">{{ opponentPoints }}</div>
+              <div class="text-xs text-gray-600">Opponent</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Final match score -->
         <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h3 class="text-sm font-semibold text-gray-700 mb-3">Final Score</h3>
+          <h3 class="text-sm font-semibold text-gray-700 mb-3">Final Match Score</h3>
           <div class="flex justify-around text-center">
             <div>
               <div class="text-4xl font-bold text-green-600">{{ multiplayerGame.myMarks }}</div>
@@ -398,6 +447,21 @@ const didIWinMatch = computed(() => {
   if (!multiplayerGame.value) return false
   const myId = authStore.currentUserID
   return multiplayerGame.value.matchWinner === myId
+})
+
+// Computed: Calculate points from spoils
+const myPoints = computed(() => {
+  if (!multiplayerGame.value?.mySpoils) return 0
+  return multiplayerGame.value.mySpoils.reduce((sum, card) => {
+    return sum + (gameStore.cardPoints(card) || 0)
+  }, 0)
+})
+
+const opponentPoints = computed(() => {
+  if (!multiplayerGame.value?.opponentSpoils) return 0
+  return multiplayerGame.value.opponentSpoils.reduce((sum, card) => {
+    return sum + (gameStore.cardPoints(card) || 0)
+  }, 0)
 })
 
 // Computed: check if game has actually started (has cards or played cards visible)
