@@ -101,6 +101,10 @@ export const createGame = (user, options = {}) => {
         player2Marks: 0,
         matchWinner: null,
         matchOver: false,
+        // Timer state
+        moveTimer: null,
+        moveStartTime: null,
+        timeRemaining: 20, // seconds
         // Stats
         started: false,
         complete: false,
@@ -503,3 +507,219 @@ export const resignGame = (gameID, playerId) => {
 
     return game
 }
+
+/**
+ * Start the move timer for the current player
+ * @param {Object} game - The game object
+ * @param {Object} io - Socket.IO instance for emitting events
+ */
+function startMoveTimer(game, io) {
+    // Clear any existing timer
+    clearMoveTimer(game)
+
+    game.moveStartTime = Date.now()
+    game.timeRemaining = 20
+
+    console.log(`[startMoveTimer] Started 20s timer for game ${game.id}, player: ${game.currentPlayer}`)
+
+    // Emit initial timer state
+    if (io) {
+        io.to(`game-${game.id}`).emit('timer-tick', {
+            gameId: game.id,
+            timeRemaining: game.timeRemaining
+        })
+    }
+
+    // Start countdown
+    const timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - game.moveStartTime) / 1000)
+        game.timeRemaining = Math.max(0, 20 - elapsed)
+
+        if (io) {
+            io.to(`game-${game.id}`).emit('timer-tick', {
+                gameId: game.id,
+                timeRemaining: game.timeRemaining
+            })
+
+            // Warning at 5 seconds
+            if (game.timeRemaining === 5) {
+                io.to(`game-${game.id}`).emit('timer-warning', {
+                    gameId: game.id,
+                    timeRemaining: game.timeRemaining
+                })
+            }
+        }
+
+        if (game.timeRemaining === 0) {
+            clearInterval(timerInterval)
+        }
+    }, 1000)
+
+    // Set timeout for forfeit
+    game.moveTimer = setTimeout(() => {
+        console.log(`[startMoveTimer] Timeout! Game ${game.id}, player ${game.currentPlayer} forfeits`)
+        handleTimeout(game, io)
+    }, 20000)
+}
+
+/**
+ * Clear the move timer
+ * @param {Object} game - The game object
+ */
+function clearMoveTimer(game) {
+    if (game.moveTimer) {
+        clearTimeout(game.moveTimer)
+        game.moveTimer = null
+        console.log(`[clearMoveTimer] Timer cleared for game ${game.id}`)
+    }
+}
+
+/**
+ * Handle timeout - award all remaining cards to opponent
+ * @param {Object} game - The game object
+ * @param {Object} io - Socket.IO instance
+ */
+function handleTimeout(game, io) {
+    console.log(`[handleTimeout] Player ${game.currentPlayer} timed out in game ${game.id}`)
+
+    // Clear the timer
+    clearMoveTimer(game)
+
+    // Determine opponent
+    const timedOutPlayer = game.currentPlayer
+    const opponent = timedOutPlayer === game.player1 ? game.player2 : game.player1
+    const isPlayer1TimedOut = timedOutPlayer === game.player1
+
+    console.log(`[handleTimeout] Awarding all remaining cards to ${opponent}`)
+
+    // Get hands based on which player timed out
+    const timedOutHand = isPlayer1TimedOut ? game.player1Hand : game.player2Hand
+    const opponentHand = isPlayer1TimedOut ? game.player2Hand : game.player1Hand
+
+    // Award all remaining cards to opponent
+    // Opponent gets: their hand + timed-out player's hand + remaining deck
+    const allRemainingCards = [
+        ...timedOutHand,
+        ...opponentHand,
+        ...game.deck
+    ]
+
+    // Calculate points from all remaining cards
+    const remainingPoints = allRemainingCards.reduce((sum, card) => {
+        return sum + getCardPoints(card)
+    }, 0)
+
+    console.log(`[handleTimeout] ${allRemainingCards.length} cards worth ${remainingPoints} points awarded to ${opponent}`)
+
+    // Add all cards to opponent's spoils
+    if (isPlayer1TimedOut) {
+        game.player2Spoils.push(...allRemainingCards)
+        game.player1Hand = []
+        game.player2Hand = []
+    } else {
+        game.player1Spoils.push(...allRemainingCards)
+        game.player1Hand = []
+        game.player2Hand = []
+    }
+    game.deck = []
+
+    // Force game to end
+    game.complete = true
+    game.endedAt = new Date()
+
+    // Calculate final scores and determine winner
+    const player1Points = game.player1Spoils.reduce((sum, card) => sum + getCardPoints(card), 0)
+    const player2Points = game.player2Spoils.reduce((sum, card) => sum + getCardPoints(card), 0)
+
+    console.log(`[handleTimeout] Final scores - ${game.player1}: ${player1Points}, ${game.player2}: ${player2Points}`)
+
+    game.winner = opponent
+
+    // Award marks for timeout forfeit (4 marks - bandeira/maximum penalty)
+    if (game.isMatch) {
+        if (isPlayer1TimedOut) {
+            game.player2Marks += 4
+        } else {
+            game.player1Marks += 4
+        }
+
+        console.log(`[handleTimeout] Timeout forfeit - ${opponent} receives 4 marks`)
+        console.log(`[handleTimeout] Current marks: ${game.player1}=${game.player1Marks}, ${game.player2}=${game.player2Marks}`)
+
+        // Check if match is over (4 marks wins)
+        const opponentMarks = isPlayer1TimedOut ? game.player2Marks : game.player1Marks
+        if (opponentMarks >= 4) {
+            game.matchWinner = opponent
+            game.matchOver = true
+            console.log(`[handleTimeout] Match over - ${opponent} wins by timeout forfeit`)
+        }
+    }
+
+    // Emit timeout event
+    if (io) {
+        io.to(`game-${game.id}`).emit('timeout', {
+            gameId: game.id,
+            timedOutPlayer,
+            winner: opponent
+        })
+
+        // Emit updated game state to each player with their perspective
+        const socketsInRoom = io.sockets.adapter.rooms.get(`game-${game.id}`)
+        if (socketsInRoom) {
+            socketsInRoom.forEach(socketId => {
+                const playerSocket = io.sockets.sockets.get(socketId)
+                if (playerSocket) {
+                    // We'll send a generic state that works for both players
+                    // The complete flag is most important here
+                    const state = {
+                        id: game.id,
+                        variant: game.variant,
+                        type: game.type,
+                        complete: game.complete,
+                        winner: game.winner,
+                        player1: game.player1,
+                        player2: game.player2,
+                        player1Name: game.player1Name,
+                        player2Name: game.player2Name,
+                        currentPlayer: game.currentPlayer,
+                        // Cards (all empty now)
+                        myHand: [],
+                        opponentHandCount: 0,
+                        deck: [],
+                        trump: game.trump,
+                        myPlayed: null,
+                        opponentPlayed: null,
+                        mySpoils: [],
+                        opponentSpoils: [],
+                        // Match state - send both perspectives
+                        isMatch: game.isMatch,
+                        currentGameNumber: game.currentGameNumber,
+                        player1Marks: game.player1Marks,
+                        player2Marks: game.player2Marks,
+                        myMarks: 0, // Will be overridden by proper handler
+                        opponentMarks: 0, // Will be overridden by proper handler
+                        matchWinner: game.matchWinner,
+                        matchOver: game.matchOver,
+                        // Timer
+                        timeRemaining: 0,
+                    }
+                    playerSocket.emit('game-state', state)
+                }
+            })
+        }
+
+        // Emit game-over event
+        io.to(`game-${game.id}`).emit('game-over', {
+            gameId: game.id,
+            winner: game.winner,
+            reason: 'timeout',
+            player1Marks: game.player1Marks,
+            player2Marks: game.player2Marks,
+            matchOver: game.matchOver,
+            matchWinner: game.matchWinner
+        })
+    }
+}
+
+// Export timer functions
+export { startMoveTimer, clearMoveTimer, handleTimeout }

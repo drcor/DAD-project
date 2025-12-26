@@ -8,7 +8,9 @@ import {
     playCard,
     resolveTrick,
     resignGame,
-    prepareNextMatchGame
+    prepareNextMatchGame,
+    startMoveTimer,
+    clearMoveTimer
 } from "../state/game.js"
 
 /**
@@ -56,6 +58,10 @@ const getGameStateForPlayer = (game, playerId) => {
         opponentMarks: playerId === game.player1 ? game.player2Marks : game.player1Marks,
         matchWinner: game.matchWinner,
         matchOver: game.matchOver,
+
+        // Timer state
+        timeRemaining: game.timeRemaining,
+        moveStartTime: game.moveStartTime,
     }
 }
 
@@ -168,6 +174,9 @@ export const handleGameEvents = (io, socket) => {
             // Deal cards now that both players are present
             dealCards(gameId)
 
+            // Start the move timer for the first player
+            startMoveTimer(game, io)
+
             // Emit to joiner
             socket.emit('game-joined', {
                 id: game.id,
@@ -234,6 +243,15 @@ export const handleGameEvents = (io, socket) => {
 
             console.log(`[Game] ${user.name} played card ${cardId} in game ${gameId}. Should resolve trick:`, shouldResolveTrick)
 
+            // Clear and restart timer after valid move (if not both cards played)
+            if (!shouldResolveTrick && !game.complete) {
+                clearMoveTimer(game)
+                startMoveTimer(game, io)
+            } else if (shouldResolveTrick) {
+                // Stop timer while trick is being resolved
+                clearMoveTimer(game)
+            }
+
             // Emit updated state to both players
             const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
             if (socketsInRoom) {
@@ -254,6 +272,11 @@ export const handleGameEvents = (io, socket) => {
 
                     if (resolvedGame) {
                         console.log(`[Game] Trick resolved in game ${gameId}`)
+
+                        // Restart timer if game continues
+                        if (!resolvedGame.complete) {
+                            startMoveTimer(resolvedGame, io)
+                        }
 
                         // Emit updated state after trick resolution
                         const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
@@ -328,6 +351,9 @@ export const handleGameEvents = (io, socket) => {
                 socket.emit('error', { message: 'Game not found' })
                 return
             }
+
+            // Clear timer on resignation
+            clearMoveTimer(game)
 
             console.log(`[Game] ${user.name} resigned from game ${gameId}`)
 
@@ -410,6 +436,9 @@ export const handleGameEvents = (io, socket) => {
             }
 
             console.log(`[Game] Next game prepared - Game ${nextGame.currentGameNumber}`)
+
+            // Start timer for the new game
+            startMoveTimer(nextGame, io)
 
             // Emit new game state to both players
             const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
