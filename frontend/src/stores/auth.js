@@ -5,7 +5,9 @@ import { useAPIStore } from './api'
 export const useAuthStore = defineStore('auth', () => {
   const apiStore = useAPIStore()
 
-  const currentUser = ref(undefined)
+  // Load user from sessionStorage on init
+  const savedUser = sessionStorage.getItem('currentUser')
+  const currentUser = ref(savedUser ? JSON.parse(savedUser) : undefined)
 
   const isLoggedIn = computed(() => {
     return currentUser.value !== undefined
@@ -19,12 +21,34 @@ export const useAuthStore = defineStore('auth', () => {
     await apiStore.postLogin(credentials)
     const response = await apiStore.getAuthUser()
     currentUser.value = response.data
+    // Save user to sessionStorage
+    sessionStorage.setItem('currentUser', JSON.stringify(response.data))
     return response.data
   }
 
   const logout = async () => {
     await apiStore.postLogout()
     currentUser.value = undefined
+    // Remove user from sessionStorage
+    sessionStorage.removeItem('currentUser')
+  }
+
+  // Initialize: restore session if token exists
+  const restoreSession = async () => {
+    const token = sessionStorage.getItem('authToken')
+    if (token && !currentUser.value) {
+      try {
+        const response = await apiStore.getAuthUser()
+        currentUser.value = response.data
+        sessionStorage.setItem('currentUser', JSON.stringify(response.data))
+      } catch (error) {
+        console.error('[Auth] Failed to restore session:', error)
+        // Token might be invalid, clear everything
+        sessionStorage.removeItem('authToken')
+        sessionStorage.removeItem('currentUser')
+        currentUser.value = undefined
+      }
+    }
   }
 
   return {
@@ -33,5 +57,6 @@ export const useAuthStore = defineStore('auth', () => {
     currentUserID,
     login,
     logout,
+    restoreSession,
   }
 })
