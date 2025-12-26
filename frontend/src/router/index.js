@@ -1,4 +1,7 @@
 import SinglePlayerPage from '@/pages/game/SinglePlayerPage.vue'
+import GameSetupPage from '@/pages/game/GameSetupPage.vue'
+import LobbyPage from '@/pages/game/LobbyPage.vue'
+import MultiPlayerPage from '@/pages/game/MultiPlayerPage.vue'
 import HomePage from '@/pages/home/HomePage.vue'
 import LoginPage from '@/pages/login/LoginPage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
@@ -33,8 +36,20 @@ const router = createRouter({
       path: '/game',
       children: [
         {
+          path: 'setup',
+          component: GameSetupPage
+        },
+        {
           path: 'singleplayer',
           component: SinglePlayerPage
+        },
+        {
+          path: 'lobby',
+          component: LobbyPage
+        },
+        {
+          path: 'multiplayer/:id',
+          component: MultiPlayerPage
         }
       ]
     }

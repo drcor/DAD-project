@@ -40,6 +40,11 @@ export const useSocketStore = defineStore('socket', () => {
         socket.emit('get-games')
     }
 
+    const emitGetGameState = (gameID) => {
+        console.log(`[Socket] Requesting game state for game ${gameID}`)
+        socket.emit('get-game-state', gameID)
+    }
+
     const handleGameEvents = () => {
         socket.on('games', (games) => {
             console.log(`[Socket] server emited games | game count ${games.length}`)
@@ -47,24 +52,71 @@ export const useSocketStore = defineStore('socket', () => {
         })
 
         socket.on('game-change', (game) => {
-            gameStore.setMultiplayerGame(game)    
+            gameStore.setMultiplayerGame(game)
+        })
+
+        socket.on('game-created', (data) => {
+            console.log(`[Socket] Game created:`, data)
+            // This event will be handled by lobby page to redirect creator
+        })
+
+        socket.on('game-started', (data) => {
+            console.log(`[Socket] Game started:`, data)
+            // This event will be handled by individual pages that need to redirect
+        })
+
+        socket.on('game-state', (state) => {
+            console.log(`[Socket] Game state received:`, state)
+            gameStore.setMultiplayerGame(state)
         })
     }
 
     const emitJoinGame = (game) => {
         console.log(`[Socket] Joining Game ${game.id}`)
-        socket.emit('join-game', game.id, authStore.currentUser.id)
+        socket.emit('join-game', { gameId: game.id })
     }
 
-    const emitFlipCard = (gameID, card) => {socket.emit('flip-card', gameID, card)}
+    const emitCreateGame = (variant, type) => {
+        console.log(`[Socket] Creating Game - Variant: ${variant}, Type: ${type}`)
+        socket.emit('create-game', { variant, type })
+    }
+
+    const emitPlayCard = (gameID, cardId) => {
+        console.log(`[Socket] Playing Card - Game: ${gameID}, Card ID:`, cardId)
+        socket.emit('play-card', { gameId: gameID, cardId: cardId })
+    }
+
+    const emitResign = (gameID) => {
+        console.log(`[Socket] Resigning from Game ${gameID}`)
+        socket.emit('resign', gameID)
+    }
+
+    const emitLeaveGame = (gameID) => {
+        console.log(`[Socket] Leaving Game ${gameID}`)
+        socket.emit('leave-game', gameID)
+    }
+
+    const emitStartNextMatchGame = (gameID) => {
+        console.log(`[Socket] Starting next game in match ${gameID}`)
+        socket.emit('start-next-match-game', { gameId: gameID })
+    }
+
+    const emitFlipCard = (gameID, card) => { socket.emit('flip-card', gameID, card) }
 
     return {
+        socket, // Expose socket instance
         emitJoin,
         emitLeave,
         handleConnection,
         emitGetGames,
+        emitGetGameState,
         handleGameEvents,
         emitJoinGame,
+        emitCreateGame,
+        emitPlayCard,
+        emitResign,
+        emitLeaveGame,
+        emitStartNextMatchGame,
         emitFlipCard,
     }
 })

@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useAuthStore } from './auth'
 
 export const useGameStore = defineStore('game', () => {
+  const authStore = useAuthStore()
 
   const TRICK_CLEAR_DELAY_MS = 1000
 
   const ranks = {
-    'A': 11, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, 'J': 3, 'Q': 2, 'K': 4
+    'A': 11, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 10, 'J': 3, 'Q': 2, 'K': 4
   }
   const suits = [
     { sym: '♠', color: 'text-black-200' },
@@ -19,8 +21,8 @@ export const useGameStore = defineStore('game', () => {
   const deck = ref([])
   const hand1 = ref([])
   const hand2 = ref([])
-  const played1 = ref({})
-  const played2 = ref({})
+  const played1 = ref(null)
+  const played2 = ref(null)
   const spoils1 = ref([])
   const spoils2 = ref([])
   const moves = ref(0)
@@ -31,12 +33,34 @@ export const useGameStore = defineStore('game', () => {
   const mode = ref('single')
   // Variant: number of cards per hand (3 or 9)
   const handSize = ref(9)
+  // Game type: 'standalone' or 'match'
+  const gameType = ref('standalone')
   // Bot scheduled action timer id (for canceling/rescheduling)
   const botTimer = ref(null)
   // Game end state
   const gameOver = ref(false)
   const winner = ref(null) // 'player' | 'bot' | 'draw'
   const endedAt = ref(undefined)
+
+  // Match state (for best-of-4-marks matches)
+  const isMatch = ref(false) // true when playing a match (not standalone)
+  const matchId = ref(null) // unique match identifier
+  const currentGameNumber = ref(1) // which game in the match (1, 2, 3, ...)
+  const player1Marks = ref(0) // player's marks (games won)
+  const player2Marks = ref(0) // opponent's marks (games won)
+  const matchWinner = ref(null) // 'player' | 'bot' | null (when match ends)
+  const matchOver = ref(false) // true when match is complete
+  const matchBeganAt = ref(undefined)
+  const matchEndedAt = ref(undefined)
+
+  // Multiplayer state
+  const availableGames = ref([]) // List of games in lobby
+  const currentGameId = ref(null) // Current multiplayer game ID
+  const opponentName = ref(null) // Opponent's name
+  const isWaitingForOpponent = ref(false) // Waiting for second player
+  const player1Id = ref(null) // User ID of player 1
+  const player2Id = ref(null) // User ID of player 2
+  const currentPlayerId = ref(null) // User ID of current player (whose turn it is)
 
   /**
    * Shuffle array of cards
@@ -78,8 +102,9 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Set board, decks, trump and user hands
+   * @param {string} starter - Who starts the game: 'player' or 'bot' (defaults to 'player')
    */
-  const setBoard = () => {
+  const setBoard = (starter = 'player') => {
     deck.value = generateCards();
     hand1.value = []
     hand2.value = []
@@ -99,6 +124,46 @@ export const useGameStore = defineStore('game', () => {
     gameOver.value = false
     winner.value = null
     endedAt.value = undefined
+    // set starting player (defaults to 'player', but can be 'bot' if they won previous game)
+    currentPlayer.value = starter
+
+    // Note: match state (marks, matchId, etc.) is NOT reset here
+    // because setBoard() is called for each game within a match
+  }
+
+  /**
+   * Initialize a new match (best-of-4-marks)
+   */
+  const startMatch = () => {
+    isMatch.value = true
+    matchId.value = `match-${Date.now()}`
+    currentGameNumber.value = 1
+    player1Marks.value = 0
+    player2Marks.value = 0
+    matchWinner.value = null
+    matchOver.value = false
+    matchBeganAt.value = new Date()
+    matchEndedAt.value = undefined
+
+    // Start first game
+    setBoard()
+  }
+
+  /**
+   * Initialize a standalone game (not part of a match)
+   */
+  const startStandaloneGame = () => {
+    isMatch.value = false
+    matchId.value = null
+    currentGameNumber.value = 1
+    player1Marks.value = 0
+    player2Marks.value = 0
+    matchWinner.value = null
+    matchOver.value = false
+    matchBeganAt.value = undefined
+    matchEndedAt.value = undefined
+
+    setBoard()
   }
 
   /**
@@ -353,7 +418,159 @@ export const useGameStore = defineStore('game', () => {
       clearTimeout(botTimer.value)
       botTimer.value = null
     }
+
+    // If playing a match, award marks and check if match continues
+    if (isMatch.value && !matchOver.value) {
+      handleMatchGameEnd()
+    }
   }
+
+  /**
+   * Handle end of a game within a match
+   * Award marks to winner and check if match is complete
+   * Match is best-of-4: always play 4 games, then determine winner by total marks
+   */
+  const handleMatchGameEnd = () => {
+    // Award mark to game winner (draws don't award marks)
+    if (winner.value === 'player') {
+      player1Marks.value++
+    } else if (winner.value === 'bot') {
+      player2Marks.value++
+    }
+
+    // Check if all 4 games have been played
+    if (currentGameNumber.value >= 4) {
+      // Match complete - determine winner by marks
+      if (player1Marks.value > player2Marks.value) {
+        matchWinner.value = 'player'
+      } else if (player2Marks.value > player1Marks.value) {
+        matchWinner.value = 'bot'
+      } else {
+        // Tie in marks after 4 games - it's a draw
+        matchWinner.value = 'draw'
+      }
+      matchOver.value = true
+      matchEndedAt.value = new Date()
+    }
+    // else match continues to next game (game 1, 2, or 3)
+  }
+
+  /**
+   * Start the next game in a match
+   * The winner of the previous game starts the next game
+   */
+  const startNextGame = () => {
+    if (!isMatch.value || matchOver.value) return
+
+    currentGameNumber.value++
+    // Winner of previous game starts next game
+    const starter = winner.value === 'player' ? 'player' : winner.value === 'bot' ? 'bot' : 'player'
+    setBoard(starter)
+    dealCards(handSize.value)
+  }
+
+  /**
+   * Set available games list (from server)
+   */
+  const setGames = (games) => {
+    availableGames.value = games
+  }
+
+  /**
+   * Set multiplayer game state (from server)
+   */
+  const setMultiplayerGame = (game) => {
+    console.log('[GameStore] Setting multiplayer game:', game)
+    console.log('[GameStore] Turn state - currentPlayer:', game.currentPlayer,
+      'player1:', game.player1,
+      'player2:', game.player2)
+
+    // Update game state from server
+    currentGameId.value = game.id
+    deck.value = game.deck || []
+    handSize.value = game.variant || 9
+    gameType.value = game.type || 'standalone'
+
+    // Backend sends myHand/opponentHand based on player perspective
+    hand1.value = game.myHand || []
+    hand2.value = [] // Opponent's hand is hidden
+
+    trump.value = game.trump || {}
+    played1.value = game.myPlayed || null
+    played2.value = game.opponentPlayed || null
+    spoils1.value = game.mySpoils || []
+    spoils2.value = game.opponentSpoils || []
+    moves.value = game.moves || 0
+    currentPlayer.value = game.currentPlayer || 'player'
+    gameOver.value = game.complete || false
+    winner.value = game.winner || null
+
+    // Set turn state - store current player ID
+    currentPlayerId.value = game.currentPlayer || null
+
+    // Set player IDs
+    player1Id.value = game.player1 || null
+    player2Id.value = game.player2 || null
+
+    // Match state
+    if (game.type === 'match') {
+      isMatch.value = true
+      currentGameNumber.value = game.currentGameNumber || 1
+      player1Marks.value = game.myMarks || 0
+      player2Marks.value = game.opponentMarks || 0
+      matchWinner.value = game.matchWinner || null
+      matchOver.value = game.matchOver || false
+    } else {
+      isMatch.value = false
+    }
+
+    // Set opponent info
+    opponentName.value = game.opponentName || null
+    isWaitingForOpponent.value = game.status === 'waiting'
+  }
+
+  /**
+   * Computed property for multiplayer game state
+   * Returns a reactive object with all multiplayer game data
+   */
+  const multiplayerGame = computed(() => {
+    if (!currentGameId.value) return null
+
+    // Calculate isMyTurn based on current player ID
+    const myUserId = authStore.currentUserID
+    const isMyTurn = currentPlayerId.value === myUserId
+
+    return {
+      id: currentGameId.value,
+      variant: handSize.value,
+      type: gameType.value,
+      deck: deck.value,
+      trump: trump.value,
+      myHand: hand1.value,
+      opponentHandCount: hand2.value.length,
+      myPlayed: played1.value,
+      opponentPlayed: played2.value,
+      mySpoils: spoils1.value,
+      opponentSpoils: spoils2.value,
+      moves: moves.value,
+      isMyTurn: isMyTurn, // Calculated from currentPlayerId === myUserId
+      currentPlayer: currentPlayer.value,
+      currentPlayerId: currentPlayerId.value, // User ID of whose turn it is
+      player1Id: player1Id.value, // User ID of player 1
+      player2Id: player2Id.value, // User ID of player 2
+      complete: gameOver.value,
+      winner: winner.value,
+      opponentName: opponentName.value,
+      isWaitingForOpponent: isWaitingForOpponent.value,
+      // Match state
+      isMatch: isMatch.value,
+      currentGameNumber: currentGameNumber.value,
+      myMarks: player1Marks.value,
+      opponentMarks: player2Marks.value,
+      matchWinner: matchWinner.value,
+      matchOver: matchOver.value,
+    }
+  })
 
   return {
     // Cards details
@@ -377,11 +594,33 @@ export const useGameStore = defineStore('game', () => {
     // mode & variant
     mode,
     handSize,
+    gameType,
     currentPlayer,
+    // match state
+    isMatch,
+    matchId,
+    currentGameNumber,
+    player1Marks,
+    player2Marks,
+    matchWinner,
+    matchOver,
+    matchBeganAt,
+    matchEndedAt,
+    // multiplayer state
+    availableGames,
+    currentGameId,
+    opponentName,
+    isWaitingForOpponent,
+    multiplayerGame,
     // methods
     setBoard,
     dealCards,
     playCard,
-    cardPoints
+    cardPoints,
+    startMatch,
+    startStandaloneGame,
+    startNextGame,
+    setGames,
+    setMultiplayerGame
   }
 })

@@ -1,0 +1,405 @@
+import { getUser } from "../state/connection.js"
+import {
+    createGame,
+    getGames,
+    getGame,
+    joinGame,
+    dealCards,
+    playCard,
+    resolveTrick,
+    resignGame,
+    prepareNextMatchGame
+} from "../state/game.js"
+
+/**
+ * Get game state for a specific player
+ * Hides opponent's hand
+ */
+const getGameStateForPlayer = (game, playerId) => {
+    if (!game) return null
+
+    return {
+        id: game.id,
+        variant: game.variant,
+        type: game.type,
+        status: game.status,
+        currentPlayer: game.currentPlayer,
+        isMyTurn: game.currentPlayer === playerId,
+
+        // Cards - hide opponent's hand
+        deck: game.deck.map(c => ({ ...c })), // Just show count, not actual cards
+        deckCount: game.deck.length,
+        myHand: playerId === game.player1 ? game.player1Hand : game.player2Hand,
+        opponentHandCount: playerId === game.player1 ? game.player2Hand.length : game.player1Hand.length,
+        trump: game.trump,
+        myPlayed: playerId === game.player1 ? game.player1Played : game.player2Played,
+        opponentPlayed: playerId === game.player1 ? game.player2Played : game.player1Played,
+        mySpoils: playerId === game.player1 ? game.player1Spoils : game.player2Spoils,
+        opponentSpoils: playerId === game.player1 ? game.player2Spoils : game.player1Spoils,
+
+        // Players
+        player1: game.player1,
+        player1Name: game.player1Name,
+        player2: game.player2,
+        player2Name: game.player2Name,
+        opponentName: playerId === game.player1 ? game.player2Name : game.player1Name,
+
+        // Game state
+        winner: game.winner,
+        complete: game.complete,
+        moves: game.moves,
+
+        // Match state
+        isMatch: game.isMatch,
+        currentGameNumber: game.currentGameNumber,
+        myMarks: playerId === game.player1 ? game.player1Marks : game.player2Marks,
+        opponentMarks: playerId === game.player1 ? game.player2Marks : game.player1Marks,
+        matchWinner: game.matchWinner,
+        matchOver: game.matchOver,
+    }
+}
+
+export const handleGameEvents = (io, socket) => {
+
+    /**
+     * Create a new game
+     * Expects: { variant: 3|9, type: 'standalone'|'match' }
+     */
+    socket.on("create-game", (options) => {
+        try {
+            const user = getUser(socket.id)
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const game = createGame(user, options)
+            socket.join(`game-${game.id}`)
+
+            console.log(`[Game] ${user.name} created game ${game.id} - Variant: ${game.variant}, Type: ${game.type}`)
+
+            // Emit to creator
+            socket.emit('game-created', {
+                id: game.id,
+                variant: game.variant,
+                type: game.type,
+                creatorName: game.creatorName
+            })
+
+            // Broadcast updated game list to all clients
+            io.emit('games', getGames())
+        } catch (error) {
+            console.error('[Game] Error creating game:', error)
+            socket.emit('error', { message: 'Failed to create game' })
+        }
+    })
+
+    /**
+     * Get list of available games
+     */
+    socket.on("get-games", () => {
+        try {
+            const games = getGames()
+            socket.emit("games", games)
+            console.log(`[Game] Sent ${games.length} available games to ${socket.id}`)
+        } catch (error) {
+            console.error('[Game] Error getting games:', error)
+            socket.emit('error', { message: 'Failed to get games' })
+        }
+    })
+
+    /**
+     * Get current state of a specific game
+     * Expects: gameId (number)
+     */
+    socket.on("get-game-state", (gameId) => {
+        try {
+            const user = getUser(socket.id)
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const game = getGame(gameId)
+            if (!game) {
+                socket.emit('error', { message: 'Game not found' })
+                return
+            }
+
+            // Check if user is a player in this game
+            if (game.player1 !== user.id && game.player2 !== user.id) {
+                socket.emit('error', { message: 'You are not a player in this game' })
+                return
+            }
+
+            const state = getGameStateForPlayer(game, user.id)
+            socket.emit('game-state', state)
+            console.log(`[Game] Sent game state for game ${gameId} to ${user.name}`)
+        } catch (error) {
+            console.error('[Game] Error getting game state:', error)
+            socket.emit('error', { message: 'Failed to get game state' })
+        }
+    })
+
+    /**
+     * Join an existing game
+     * Expects: { gameId: number }
+     */
+    socket.on('join-game', (data) => {
+        try {
+            const { gameId } = data
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const game = joinGame(gameId, user)
+
+            if (!game) {
+                socket.emit('error', { message: 'Game not found or already full' })
+                return
+            }
+
+            socket.join(`game-${gameId}`)
+            console.log(`[Game] ${user.name} joined game ${gameId}`)
+
+            // Deal cards now that both players are present
+            dealCards(gameId)
+
+            // Emit to joiner
+            socket.emit('game-joined', {
+                id: game.id,
+                variant: game.variant,
+                type: game.type
+            })
+
+            // Emit to both players that game is starting
+            io.to(`game-${gameId}`).emit('game-started', {
+                gameId: game.id,
+                player1Name: game.player1Name,
+                player2Name: game.player2Name
+            })
+
+            // Send initial game state to both players
+            const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
+            if (socketsInRoom) {
+                socketsInRoom.forEach(socketId => {
+                    const playerSocket = io.sockets.sockets.get(socketId)
+                    const playerUser = getUser(socketId)
+                    if (playerSocket && playerUser) {
+                        const state = getGameStateForPlayer(game, playerUser.id)
+                        playerSocket.emit('game-state', state)
+                    }
+                })
+            }
+
+            // Update lobby - remove game from available list
+            io.emit('games', getGames())
+
+        } catch (error) {
+            console.error('[Game] Error joining game:', error)
+            socket.emit('error', { message: 'Failed to join game' })
+        }
+    })
+
+    /**
+     * Play a card
+     * Expects: { gameId: number, cardId: number }
+     */
+    socket.on('play-card', (data) => {
+        console.log('[Game] play-card event received. Data:', data)
+        try {
+            const { gameId, cardId } = data
+            const user = getUser(socket.id)
+
+            console.log('[Game] User:', user, 'GameId:', gameId, 'CardId:', cardId)
+
+            if (!user) {
+                console.log('[Game] User not authenticated')
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const result = playCard(gameId, cardId, user.id)
+
+            if (!result) {
+                console.log('[Game] playCard returned null - invalid move')
+                socket.emit('error', { message: 'Invalid move' })
+                return
+            }
+
+            const { game, shouldResolveTrick } = result
+
+            console.log(`[Game] ${user.name} played card ${cardId} in game ${gameId}. Should resolve trick:`, shouldResolveTrick)
+
+            // Emit updated state to both players
+            const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
+            if (socketsInRoom) {
+                socketsInRoom.forEach(socketId => {
+                    const playerSocket = io.sockets.sockets.get(socketId)
+                    const playerUser = getUser(socketId)
+                    if (playerSocket && playerUser) {
+                        const state = getGameStateForPlayer(game, playerUser.id)
+                        playerSocket.emit('game-state', state)
+                    }
+                })
+            }
+
+            // If both players played, resolve trick after a delay
+            if (shouldResolveTrick) {
+                setTimeout(() => {
+                    const resolvedGame = resolveTrick(gameId)
+
+                    if (resolvedGame) {
+                        console.log(`[Game] Trick resolved in game ${gameId}`)
+
+                        // Emit updated state after trick resolution
+                        const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
+                        if (socketsInRoom) {
+                            socketsInRoom.forEach(socketId => {
+                                const playerSocket = io.sockets.sockets.get(socketId)
+                                const playerUser = getUser(socketId)
+                                if (playerSocket && playerUser) {
+                                    const state = getGameStateForPlayer(resolvedGame, playerUser.id)
+                                    playerSocket.emit('game-state', state)
+
+                                    // If game is over, send game-over event
+                                    if (resolvedGame.complete) {
+                                        playerSocket.emit('game-over', {
+                                            winner: resolvedGame.winner,
+                                            player1Points: resolvedGame.player1Spoils.reduce((sum, c) => sum + (c.rank ? 0 : 0), 0),
+                                            player2Points: resolvedGame.player2Spoils.reduce((sum, c) => sum + (c.rank ? 0 : 0), 0),
+                                            matchOver: resolvedGame.matchOver,
+                                            matchWinner: resolvedGame.matchWinner
+                                        })
+                                    }
+                                }
+                            })
+                        }
+
+                        // Log if match continues - next game will be started manually by players
+                        if (resolvedGame.complete && resolvedGame.isMatch && !resolvedGame.matchOver && resolvedGame.needsNextGame) {
+                            console.log(`[Game] Match game ${resolvedGame.currentGameNumber} complete. Waiting for players to start next game.`)
+                        }
+                    }
+                }, 1500) // 1.5 second delay to see the cards
+            }
+
+        } catch (error) {
+            console.error('[Game] Error playing card:', error)
+            socket.emit('error', { message: 'Failed to play card' })
+        }
+    })
+
+    /**
+     * Resign from game
+     * Expects: { gameId: number }
+     */
+    socket.on('resign', (data) => {
+        try {
+            const { gameId } = data
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const game = resignGame(gameId, user.id)
+
+            if (!game) {
+                socket.emit('error', { message: 'Game not found' })
+                return
+            }
+
+            console.log(`[Game] ${user.name} resigned from game ${gameId}`)
+
+            // Emit game-over to both players
+            io.to(`game-${gameId}`).emit('game-over', {
+                winner: game.winner,
+                resigned: true,
+                resignedPlayer: user.id,
+                matchOver: game.matchOver,
+                matchWinner: game.matchWinner
+            })
+
+        } catch (error) {
+            console.error('[Game] Error resigning:', error)
+            socket.emit('error', { message: 'Failed to resign' })
+        }
+    })
+
+    /**
+     * Leave game (before it starts or after it ends)
+     * Expects: { gameId: number }
+     */
+    socket.on('leave-game', (data) => {
+        try {
+            const { gameId } = data
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            socket.leave(`game-${gameId}`)
+            console.log(`[Game] ${user.name} left game ${gameId}`)
+
+            // If game hasn't started, could remove it or allow someone else to join
+            // For now, just confirm they left
+            socket.emit('left-game', { gameId })
+
+        } catch (error) {
+            console.error('[Game] Error leaving game:', error)
+            socket.emit('error', { message: 'Failed to leave game' })
+        }
+    })
+
+    /**
+     * Start next game in match
+     * Expects: { gameId: number }
+     */
+    socket.on('start-next-match-game', (data) => {
+        try {
+            const { gameId } = data
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            console.log(`[Game] ${user.name} requesting to start next game in match ${gameId}`)
+
+            const nextGame = prepareNextMatchGame(gameId)
+
+            if (!nextGame) {
+                socket.emit('error', { message: 'Cannot start next game - match may be over or game not finished' })
+                return
+            }
+
+            console.log(`[Game] Next game prepared - Game ${nextGame.currentGameNumber}`)
+
+            // Emit new game state to both players
+            const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
+            if (socketsInRoom) {
+                socketsInRoom.forEach(socketId => {
+                    const playerSocket = io.sockets.sockets.get(socketId)
+                    const playerUser = getUser(socketId)
+                    if (playerSocket && playerUser) {
+                        const state = getGameStateForPlayer(nextGame, playerUser.id)
+                        console.log(`[Game] Emitting next game state to player ${playerUser.id}`)
+                        playerSocket.emit('game-state', state)
+                    }
+                })
+            }
+
+        } catch (error) {
+            console.error('[Game] Error starting next match game:', error)
+            socket.emit('error', { message: 'Failed to start next game' })
+        }
+    })
+}
