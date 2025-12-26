@@ -92,6 +92,7 @@ export const createGame = (user, options = {}) => {
         trump: null,
         player1Played: null,
         player2Played: null,
+        firstPlayerOfTrick: null, // Track who played first in current trick
         player1Spoils: [],
         player2Spoils: [],
         // Match state
@@ -102,7 +103,8 @@ export const createGame = (user, options = {}) => {
         matchWinner: null,
         matchOver: false,
         // Timer state
-        moveTimer: null,
+        moveTimer: null,          // setTimeout reference for timeout
+        moveTimerInterval: null,  // setInterval reference for countdown
         moveStartTime: null,
         timeRemaining: 20, // seconds
         // Stats
@@ -201,8 +203,16 @@ export const playCard = (gameID, cardId, playerId) => {
     // Place card in played position
     if (isPlayer1) {
         game.player1Played = card
+        // Track if this is the first card of the trick
+        if (!game.player2Played) {
+            game.firstPlayerOfTrick = game.player1
+        }
     } else {
         game.player2Played = card
+        // Track if this is the first card of the trick
+        if (!game.player1Played) {
+            game.firstPlayerOfTrick = game.player2
+        }
     }
 
     // If both players have played, resolve trick
@@ -256,8 +266,21 @@ export const resolveTrick = (gameID) => {
 
     if (!card1 || !card2) return null
 
-    // Determine winner
-    const player1Wins = cardBeats(card1, card2, game.trump)
+    // Determine which card was played first
+    const player1PlayedFirst = game.firstPlayerOfTrick === game.player1
+    const firstCard = player1PlayedFirst ? card1 : card2
+    const secondCard = player1PlayedFirst ? card2 : card1
+
+    console.log(`[resolveTrick] First player: ${game.firstPlayerOfTrick === game.player1 ? 'Player1' : 'Player2'}`)
+    console.log(`[resolveTrick] First card: ${firstCard.rank}${firstCard.suit}`)
+    console.log(`[resolveTrick] Second card: ${secondCard.rank}${secondCard.suit}`)
+    console.log(`[resolveTrick] Trump: ${game.trump ? game.trump.rank + game.trump.suit : 'none'}`)
+
+    // Determine winner using first card as reference
+    const firstCardWins = cardBeats(firstCard, secondCard, game.trump)
+    const player1Wins = player1PlayedFirst ? firstCardWins : !firstCardWins
+
+    console.log(`[resolveTrick] First card wins: ${firstCardWins}, Player1 wins: ${player1Wins}`)
 
     game.moves++
 
@@ -265,14 +288,17 @@ export const resolveTrick = (gameID) => {
     if (player1Wins) {
         game.player1Spoils.push(card1, card2)
         game.currentPlayer = game.player1 // Winner starts next trick
+        console.log(`[resolveTrick] Player1 wins trick`)
     } else {
         game.player2Spoils.push(card1, card2)
         game.currentPlayer = game.player2
+        console.log(`[resolveTrick] Player2 wins trick`)
     }
 
-    // Clear played cards
+    // Clear played cards and first player tracker
     game.player1Played = null
     game.player2Played = null
+    game.firstPlayerOfTrick = null
 
     // Deal new cards if deck is not empty
     if (game.deck.length > 0) {
@@ -329,6 +355,7 @@ const startNextGameInMatch = (game) => {
     game.player2Hand = []
     game.player1Played = null
     game.player2Played = null
+    game.firstPlayerOfTrick = null
     game.player1Spoils = []
     game.player2Spoils = []
     game.trump = null
@@ -530,8 +557,8 @@ function startMoveTimer(game, io) {
         })
     }
 
-    // Start countdown
-    const timerInterval = setInterval(() => {
+    // Start countdown interval
+    game.moveTimerInterval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - game.moveStartTime) / 1000)
         game.timeRemaining = Math.max(0, 20 - elapsed)
 
@@ -551,7 +578,8 @@ function startMoveTimer(game, io) {
         }
 
         if (game.timeRemaining === 0) {
-            clearInterval(timerInterval)
+            clearInterval(game.moveTimerInterval)
+            game.moveTimerInterval = null
         }
     }, 1000)
 
@@ -560,9 +588,7 @@ function startMoveTimer(game, io) {
         console.log(`[startMoveTimer] Timeout! Game ${game.id}, player ${game.currentPlayer} forfeits`)
         handleTimeout(game, io)
     }, 20000)
-}
-
-/**
+}/**
  * Clear the move timer
  * @param {Object} game - The game object
  */
@@ -570,6 +596,12 @@ function clearMoveTimer(game) {
     if (game.moveTimer) {
         clearTimeout(game.moveTimer)
         game.moveTimer = null
+    }
+    if (game.moveTimerInterval) {
+        clearInterval(game.moveTimerInterval)
+        game.moveTimerInterval = null
+    }
+    if (game.moveTimer || game.moveTimerInterval) {
         console.log(`[clearMoveTimer] Timer cleared for game ${game.id}`)
     }
 }
