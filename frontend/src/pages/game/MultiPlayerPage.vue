@@ -61,6 +61,55 @@
         </div>
       </div>
 
+      <!-- Move Timer -->
+      <div
+        v-if="!multiplayerGame?.complete && gameStarted"
+        :class="[
+          'border-2 rounded-lg p-3',
+          multiplayerGame?.timerWarning
+            ? 'bg-red-50 border-red-500'
+            : multiplayerGame?.isMyTurn
+              ? 'bg-blue-50 border-blue-500'
+              : 'bg-gray-50 border-gray-300',
+        ]"
+      >
+        <h3
+          :class="[
+            'text-sm font-bold mb-2',
+            multiplayerGame?.timerWarning
+              ? 'text-red-700'
+              : multiplayerGame?.isMyTurn
+                ? 'text-blue-700'
+                : 'text-gray-700',
+          ]"
+        >
+          {{ multiplayerGame?.isMyTurn ? 'Your Turn' : "Opponent's Turn" }}
+        </h3>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-2 bg-white rounded-full overflow-hidden border">
+            <div
+              :class="[
+                'h-full transition-all duration-300',
+                multiplayerGame?.timerWarning
+                  ? 'bg-red-500'
+                  : multiplayerGame?.isMyTurn
+                    ? 'bg-blue-500'
+                    : 'bg-gray-400',
+              ]"
+              :style="{ width: `${((multiplayerGame?.timeRemaining || 0) / 20) * 100}%` }"
+            ></div>
+          </div>
+          <span
+            :class="[
+              'text-lg font-mono font-bold min-w-[3ch] text-right',
+              multiplayerGame?.timerWarning ? 'text-red-600' : 'text-gray-700',
+            ]"
+          >
+            {{ multiplayerGame?.timeRemaining || 0 }}s
+          </span>
+        </div>
+      </div>
+
       <!-- Game Info -->
       <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-3">
         <h3 class="text-sm font-bold text-gray-700 mb-2">Game Info</h3>
@@ -275,6 +324,48 @@
       </div>
     </div>
   </div>
+
+  <!-- Timeout Modal -->
+  <div
+    v-if="gameStore.showTimeoutModal"
+    role="dialog"
+    aria-modal="true"
+    class="fixed inset-0 z-50 flex items-center justify-center"
+  >
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+
+    <div class="relative bg-white rounded-lg p-6 w-96 shadow-lg text-center">
+      <div class="mb-4">
+        <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+          <svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+        </div>
+      </div>
+      <h2 class="text-2xl font-bold mb-4 text-red-600">Time's Up!</h2>
+      <p class="mb-4 text-lg">
+        <span v-if="gameStore.timeoutData?.timedOutPlayer === authStore.currentUserID">
+          You ran out of time and forfeited the game.
+        </span>
+        <span v-else> Your opponent ran out of time! </span>
+      </p>
+      <p class="mb-6 text-sm text-gray-600">
+        All remaining cards have been awarded to
+        {{ gameStore.timeoutData?.winner === authStore.currentUserID ? 'you' : 'your opponent' }}.
+      </p>
+      <button
+        @click="gameStore.closeTimeoutModal()"
+        class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
+      >
+        Continue
+      </button>
+    </div>
+  </div>
   <!-- End of game UI wrapper -->
 </template>
 
@@ -312,10 +403,13 @@ const didIWinMatch = computed(() => {
 // Computed: check if game has actually started (has cards or played cards visible)
 const gameStarted = computed(() => {
   if (!multiplayerGame.value) return false
-  // Game has started if we have cards in our hand OR there are played cards on the board
+  // Game has started if:
+  // 1. We have cards in our hand OR there are played cards on the board
+  // 2. OR the game is complete (finished games count as "started")
   const hasCards = multiplayerGame.value.myHand && multiplayerGame.value.myHand.length > 0
   const hasPlayedCards = multiplayerGame.value.myPlayed || multiplayerGame.value.opponentPlayed
-  return hasCards || hasPlayedCards
+  const isComplete = multiplayerGame.value.complete
+  return hasCards || hasPlayedCards || isComplete
 })
 
 // Computed: turn status with ID verification

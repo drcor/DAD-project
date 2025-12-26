@@ -69,6 +69,28 @@ export const useSocketStore = defineStore('socket', () => {
             console.log(`[Socket] Game state received:`, state)
             gameStore.setMultiplayerGame(state)
         })
+
+        socket.on('game-over', (data) => {
+            console.log(`[Socket] Game over:`, data)
+            // The game state will be updated via game-state event
+            // This event can be used for additional handling if needed
+        })
+
+        // Timer events
+        socket.on('timer-tick', (data) => {
+            console.log(`[Socket] Timer tick:`, data)
+            gameStore.setTimeRemaining(data.timeRemaining)
+        })
+
+        socket.on('timer-warning', (data) => {
+            console.log(`[Socket] Timer warning - ${data.timeRemaining} seconds remaining`)
+            gameStore.setTimerWarning(true)
+        })
+
+        socket.on('timeout', (data) => {
+            console.log(`[Socket] Player timeout:`, data)
+            gameStore.handleTimeout(data)
+        })
     }
 
     const emitJoinGame = (game) => {

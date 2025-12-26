@@ -62,6 +62,12 @@ export const useGameStore = defineStore('game', () => {
   const player2Id = ref(null) // User ID of player 2
   const currentPlayerId = ref(null) // User ID of current player (whose turn it is)
 
+  // Timer state
+  const timeRemaining = ref(20) // Seconds remaining on current player's move timer
+  const timerWarning = ref(false) // true when timer is below 5 seconds
+  const showTimeoutModal = ref(false) // Show timeout notification modal
+  const timeoutData = ref(null) // Data about the timeout event
+
   /**
    * Shuffle array of cards
    * @param {Array} cards 
@@ -513,15 +519,40 @@ export const useGameStore = defineStore('game', () => {
     player2Id.value = game.player2 || null
 
     // Match state
-    if (game.type === 'match') {
+    if (game.type === 'match' || game.isMatch) {
       isMatch.value = true
       currentGameNumber.value = game.currentGameNumber || 1
-      player1Marks.value = game.myMarks || 0
-      player2Marks.value = game.opponentMarks || 0
+
+      // Handle both perspective-based (myMarks/opponentMarks) and raw (player1Marks/player2Marks) formats
+      if (game.myMarks !== undefined || game.opponentMarks !== undefined) {
+        // Perspective-based format from getGameStateForPlayer
+        player1Marks.value = game.myMarks || 0
+        player2Marks.value = game.opponentMarks || 0
+      } else if (game.player1Marks !== undefined || game.player2Marks !== undefined) {
+        // Raw format - need to determine which is "my" marks
+        const myUserId = authStore.currentUserID
+        if (myUserId === game.player1) {
+          player1Marks.value = game.player1Marks || 0
+          player2Marks.value = game.player2Marks || 0
+        } else {
+          player1Marks.value = game.player2Marks || 0
+          player2Marks.value = game.player1Marks || 0
+        }
+      }
+
       matchWinner.value = game.matchWinner || null
       matchOver.value = game.matchOver || false
     } else {
       isMatch.value = false
+    }
+
+    // Timer state
+    if (game.timeRemaining !== undefined) {
+      timeRemaining.value = game.timeRemaining
+    }
+    // Reset warning if timer is back to high value
+    if (game.timeRemaining > 5) {
+      timerWarning.value = false
     }
 
     // Set opponent info
@@ -569,8 +600,51 @@ export const useGameStore = defineStore('game', () => {
       opponentMarks: player2Marks.value,
       matchWinner: matchWinner.value,
       matchOver: matchOver.value,
+      // Timer state
+      timeRemaining: timeRemaining.value,
+      timerWarning: timerWarning.value,
     }
   })
+
+  /**
+   * Set time remaining from timer tick event
+   * @param {number} time - Seconds remaining
+   */
+  const setTimeRemaining = (time) => {
+    timeRemaining.value = time
+    // Clear warning if time goes back up (shouldn't happen normally)
+    if (time > 5) {
+      timerWarning.value = false
+    }
+  }
+
+  /**
+   * Set timer warning state (when time is low)
+   * @param {boolean} warning - Whether to show warning
+   */
+  const setTimerWarning = (warning) => {
+    timerWarning.value = warning
+  }
+
+  /**
+   * Handle timeout event from server
+   * @param {Object} data - Timeout event data
+   */
+  const handleTimeout = (data) => {
+    console.log('[GameStore] Timeout occurred:', data)
+    timeoutData.value = data
+    showTimeoutModal.value = true
+    // Timer will be stopped by server
+    timeRemaining.value = 0
+  }
+
+  /**
+   * Close timeout modal
+   */
+  const closeTimeoutModal = () => {
+    showTimeoutModal.value = false
+    timeoutData.value = null
+  }
 
   return {
     // Cards details
@@ -612,6 +686,11 @@ export const useGameStore = defineStore('game', () => {
     opponentName,
     isWaitingForOpponent,
     multiplayerGame,
+    // timer state
+    timeRemaining,
+    timerWarning,
+    showTimeoutModal,
+    timeoutData,
     // methods
     setBoard,
     dealCards,
@@ -621,6 +700,11 @@ export const useGameStore = defineStore('game', () => {
     startStandaloneGame,
     startNextGame,
     setGames,
-    setMultiplayerGame
+    setMultiplayerGame,
+    // timer methods
+    setTimeRemaining,
+    setTimerWarning,
+    handleTimeout,
+    closeTimeoutModal
   }
 })
