@@ -299,7 +299,19 @@ export const handleGameEvents = (io, socket) => {
      */
     socket.on('resign', (data) => {
         try {
-            const { gameId } = data
+            console.log('[Game] Resign event received. Data:', data)
+            let { gameId } = data
+
+            // Ensure gameId is a number
+            gameId = parseInt(gameId)
+            console.log('[Game] Parsed gameId:', gameId, 'Type:', typeof gameId)
+
+            if (isNaN(gameId)) {
+                console.log('[Game] Invalid gameId - not a number')
+                socket.emit('error', { message: 'Invalid game ID' })
+                return
+            }
+
             const user = getUser(socket.id)
 
             if (!user) {
@@ -307,16 +319,32 @@ export const handleGameEvents = (io, socket) => {
                 return
             }
 
+            console.log(`[Game] User ${user.name} (${user.id}) attempting to resign from game ${gameId}`)
+
             const game = resignGame(gameId, user.id)
 
             if (!game) {
+                console.log(`[Game] resignGame returned null for gameId: ${gameId}`)
                 socket.emit('error', { message: 'Game not found' })
                 return
             }
 
             console.log(`[Game] ${user.name} resigned from game ${gameId}`)
 
-            // Emit game-over to both players
+            // Emit updated game state to both players first
+            const socketsInRoom = io.sockets.adapter.rooms.get(`game-${gameId}`)
+            if (socketsInRoom) {
+                socketsInRoom.forEach(socketId => {
+                    const playerSocket = io.sockets.sockets.get(socketId)
+                    const playerUser = getUser(socketId)
+                    if (playerSocket && playerUser) {
+                        const state = getGameStateForPlayer(game, playerUser.id)
+                        playerSocket.emit('game-state', state)
+                    }
+                })
+            }
+
+            // Then emit game-over to both players
             io.to(`game-${gameId}`).emit('game-over', {
                 winner: game.winner,
                 resigned: true,

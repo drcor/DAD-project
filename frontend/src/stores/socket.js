@@ -88,7 +88,7 @@ export const useSocketStore = defineStore('socket', () => {
 
     const emitResign = (gameID) => {
         console.log(`[Socket] Resigning from Game ${gameID}`)
-        socket.emit('resign', gameID)
+        socket.emit('resign', { gameId: gameID })
     }
 
     const emitLeaveGame = (gameID) => {
