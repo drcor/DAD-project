@@ -467,19 +467,38 @@ export const prepareNextMatchGame = (gameID) => {
 }
 
 export const resignGame = (gameID, playerId) => {
+    console.log(`[resignGame] Player ${playerId} resigning from game ${gameID}`)
     const game = games.get(gameID)
-    if (!game) return null
+    if (!game) {
+        console.log(`[resignGame] Game ${gameID} not found`)
+        return null
+    }
 
-    // Opponent wins
+    // Opponent wins by resignation
     game.winner = game.player1 === playerId ? game.player2 : game.player1
+    console.log(`[resignGame] Winner by resignation: ${game.winner}`)
+
     game.complete = true
     game.status = 'completed'
     game.endedAt = new Date()
 
-    // In a match, resigning forfeits the entire match
+    // In a match, award marks to the winner
     if (game.isMatch) {
+        console.log(`[resignGame] This is a match - awarding marks to winner`)
+
+        // Resignation gives opponent 4 marks (bandeira - forfeit)
+        if (game.winner === game.player1) {
+            game.player1Marks += 4
+            console.log(`[resignGame] Player1 awarded 4 marks for opponent resignation - total: ${game.player1Marks}`)
+        } else {
+            game.player2Marks += 4
+            console.log(`[resignGame] Player2 awarded 4 marks for opponent resignation - total: ${game.player2Marks}`)
+        }
+
+        // Resignation forfeits the entire match
         game.matchWinner = game.winner
         game.matchOver = true
+        console.log(`[resignGame] Match forfeited - winner: ${game.matchWinner}`)
     }
 
     return game
