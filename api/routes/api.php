@@ -15,16 +15,14 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::post('logout', [AuthController::class, 'logout']);
-});
 
-Route::apiResource('games', GameController::class);
-
-// Persistence routes for WebSocket server (no auth required for internal calls)
-Route::post('/games/persist', [GameController::class, 'persist']);
-Route::post('/matches/persist', [MatchController::class, 'persist']);
-
-// Match routes with auth
-Route::middleware('auth:sanctum')->group(function () {
+    // Persistence routes for WebSocket server (no auth required for internal calls)
+    Route::post('/games/persist', [GameController::class, 'persist']);
+    Route::post('/matches/persist', [MatchController::class, 'persist']);
+    
+    // Match routes with auth
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/matches/{id}', [MatchController::class, 'show']);
 });
+
+Route::apiResource('games', GameController::class);

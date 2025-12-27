@@ -66,8 +66,8 @@ class MatchController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation or persistence error',
-                'error' => $e->getMessage()
-            ], 400);
+                'error' => 'Internal server error'
+            ], 500);
         }
     }
 
