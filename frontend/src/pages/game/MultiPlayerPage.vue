@@ -453,14 +453,14 @@ const didIWinMatch = computed(() => {
 const myPoints = computed(() => {
   if (!multiplayerGame.value?.mySpoils) return 0
   return multiplayerGame.value.mySpoils.reduce((sum, card) => {
-    return sum + (gameStore.cardPoints(card) || 0)
+    return sum + (gameStore.getCardPoints(card) || 0)
   }, 0)
 })
 
 const opponentPoints = computed(() => {
   if (!multiplayerGame.value?.opponentSpoils) return 0
   return multiplayerGame.value.opponentSpoils.reduce((sum, card) => {
-    return sum + (gameStore.cardPoints(card) || 0)
+    return sum + (gameStore.getCardPoints(card) || 0)
   }, 0)
 })
 
