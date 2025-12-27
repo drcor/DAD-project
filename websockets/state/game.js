@@ -229,7 +229,7 @@ export const playCard = (gameID, cardId, playerId) => {
     }
 }
 
-const getCardPoints = (card) => {
+export const getCardPoints = (card) => {
     return cardPoints[card.rank] || 0
 }
 

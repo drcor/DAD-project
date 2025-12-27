@@ -298,7 +298,6 @@ export const handleGameEvents = (io, socket) => {
                                             matchWinner: resolvedGame.matchWinner
                                         })
                                     }
-                                    }
                                 }
                             })
                         }
