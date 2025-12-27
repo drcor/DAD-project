@@ -2,24 +2,45 @@
 import { ref, computed } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+
+// Componentes que TU TENS (Baseado na tua imagem)
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+
+// Ícones (Se der erro aqui, remove esta linha e as tags <Coins>, <Wallet>, etc.)
+import { Loader2, Coins, Wallet, CreditCard } from 'lucide-vue-next'
+
 const userStore = useAuthStore()
 
-
-// --- Dados do Formulário ---
+// --- Dados ---
 const paymentType = ref('MBWAY')
 const reference = ref('')
-const value = ref(5) // Valor inicial (5 euros)
-
-// --- Estado da Interface ---
+const value = ref(5)
 const loading = ref(false)
 const message = ref('')
 const error = ref('')
 
-// --- Ajuda visual para o utilizador saber o formato da referência ---
+const paymentMethods = [
+  { value: 'MBWAY', label: 'MBWAY' },
+  { value: 'VISA', label: 'Cartão Visa' },
+  { value: 'IBAN', label: 'Transferência Bancária' },
+  { value: 'MB', label: 'Multibanco' },
+  { value: 'PAYPAL', label: 'PayPal' },
+]
+
+// --- Placeholder Dinâmico ---
 const referencePlaceholder = computed(() => {
     switch (paymentType.value) {
-        case 'MBWAY': return '912345678 (9 dígitos)'
-        case 'VISA': return '4000000000000000 (Começa com 4, 16 dígitos)'
+        case 'MBWAY': return '912345678'
+        case 'VISA': return '4000 0000 0000 0000'
         case 'IBAN': return 'PT50...'
         case 'MB': return '12345-123456789'
         case 'PAYPAL': return 'email@exemplo.com'
@@ -27,43 +48,34 @@ const referencePlaceholder = computed(() => {
     }
 })
 
-// --- Função de Compra ---
+// --- Ação de Compra ---
 async function buyCoins() {
-    // 1. Limpar mensagens antigas
     error.value = ''
     message.value = ''
     loading.value = true
 
     try {
-        // 2. Enviar pedido ao teu Laravel (G2)
-        const response = await axios.post('/transactions', {
+        const response = await axios.post('/api/transactions', {
             type: paymentType.value,
             reference: reference.value,
             value: value.value
         })
 
-        // 3. Sucesso! Mostrar mensagem
         const gainedCoins = response.data.coins_added
         const newBalance = response.data.balance
-        message.value = `Sucesso! Compraste ${gainedCoins} moedas.`
-
-        // 4. ATUALIZAR O PINIA (Isto atualiza o saldo no topo do site imediatamente)
+        
+        message.value = `Sucesso! Adicionaste ${gainedCoins} moedas.`
+        
         if (userStore.currentUser) {
             userStore.currentUser.coins_balance = newBalance
         }
-        
-        // Limpar referência para nova compra
         reference.value = ''
-
     } catch (e) {
-        // 5. Tratamento de Erros
-        if (e.response && e.response.status === 422) {
+        console.error(e)
+        if (e.response?.status === 422) {
             error.value = "Dados inválidos. Verifica a referência e o valor."
-            console.log(e.response.data.errors) // Para debug
-        } else if (e.response && e.response.status === 401) {
-            error.value = "A tua sessão expirou. Faz login novamente."
         } else {
-            error.value = "Erro ao processar pagamento. Tenta novamente."
+            error.value = "Erro ao processar pagamento."
         }
     } finally {
         loading.value = false
@@ -72,69 +84,110 @@ async function buyCoins() {
 </script>
 
 <template>
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h3 class="mb-0">🏪 Loja de Moedas</h3>
+  <div class="flex justify-center items-start min-h-[80vh] py-10 bg-slate-50">
+    
+    <div class="w-full max-w-md bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+      
+      <div class="p-6 border-b border-slate-100 space-y-1.5">
+        <div class="flex items-center gap-2 mb-2">
+          <Badge variant="outline" class="bg-blue-50 text-blue-700 border-blue-200">
+            Loja Oficial
+          </Badge>
         </div>
-        <div class="card-body">
-            <div class="alert alert-info d-flex justify-content-between align-items-center">
-                <span>O teu saldo atual:</span>
-                <span class="fs-4 fw-bold">💰 {{ userStore.currentUser?.coins_balance ?? 0 }}</span>
+        <h3 class="font-semibold tracking-tight text-2xl flex items-center gap-2">
+          <Coins class="w-6 h-6 text-yellow-500" />
+          Comprar Moedas
+        </h3>
+        <p class="text-sm text-slate-500">
+          Carrega a tua conta para jogares partidas multiplayer.
+        </p>
+      </div>
+
+      <div class="p-6 space-y-6">
+        
+        <div class="bg-slate-50 p-4 rounded-lg flex items-center justify-between border border-slate-200">
+          <div class="flex items-center gap-2 text-slate-600 font-medium">
+            <Wallet class="w-5 h-5" />
+            <span>Saldo Atual</span>
+          </div>
+          <div class="text-2xl font-bold text-slate-900">
+            {{ userStore.currentUser?.coins_balance ?? 0 }} 
+            <span class="text-sm font-normal text-slate-500">moedas</span>
+          </div>
+        </div>
+
+        <form @submit.prevent="buyCoins" class="space-y-4">
+          
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Quanto queres carregar? (€)
+            </label>
+            <div class="flex items-center gap-4">
+              <Input 
+                v-model="value" 
+                type="number" 
+                min="1" max="99" 
+                class="text-lg font-bold w-full"
+              />
+              <div class="text-right min-w-[100px]">
+                <div class="text-xs text-slate-500 uppercase font-semibold">Recebes</div>
+                <div class="text-xl font-bold text-green-600">+ {{ value * 10 }} 🪙</div>
+              </div>
             </div>
+          </div>
 
-            <form @submit.prevent="buyCoins">
-                <div class="mb-3">
-                    <label class="form-label">Método de Pagamento</label>
-                    <select v-model="paymentType" class="form-select">
-                        <option value="MBWAY">MBWAY</option>
-                        <option value="VISA">VISA</option>
-                        <option value="IBAN">IBAN</option>
-                        <option value="MB">Multibanco</option>
-                        <option value="PAYPAL">PayPal</option>
-                    </select>
-                </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Método de Pagamento
+            </label>
+            <Select v-model="paymentType">
+              <SelectTrigger>
+                <SelectValue placeholder="Seleciona um método" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="method in paymentMethods" :key="method.value" :value="method.value">
+                  {{ method.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Referência / Número</label>
-                    <input 
-                        v-model="reference" 
-                        type="text" 
-                        class="form-control" 
-                        :placeholder="referencePlaceholder" 
-                        required
-                    >
-                </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Dados de Pagamento
+            </label>
+            <div class="relative">
+              <CreditCard class="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <Input 
+                v-model="reference" 
+                type="text" 
+                class="pl-9"
+                :placeholder="referencePlaceholder" 
+                required
+              />
+            </div>
+            <p class="text-xs text-slate-500">
+              Exemplo: {{ referencePlaceholder }}
+            </p>
+          </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Valor a carregar (€)</label>
-                    <div class="input-group">
-                        <span class="input-group-text">€</span>
-                        <input v-model="value" type="number" min="1" max="99" class="form-control">
-                    </div>
-                    <div class="form-text text-success">
-                        Vais receber <strong>{{ value * 10 }}</strong> moedas.
-                    </div>
-                </div>
+          <Button type="submit" class="w-full h-12 text-lg font-semibold bg-green-600 hover:bg-green-700 text-white" :disabled="loading">
+            <Loader2 v-if="loading" class="mr-2 h-5 w-5 animate-spin" />
+            {{ loading ? 'A processar...' : 'Confirmar Compra' }}
+          </Button>
 
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-success btn-lg" :disabled="loading">
-                        <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                        {{ loading ? 'A processar...' : 'Comprar Moedas' }}
-                    </button>
-                </div>
+        </form>
+      </div>
 
-                <div v-if="message" class="alert alert-success mt-3">{{ message }}</div>
-                <div v-if="error" class="alert alert-danger mt-3">{{ error }}</div>
-            </form>
+      <div v-if="message || error" class="p-6 pt-0 flex flex-col gap-2">
+        <div v-if="message" class="p-4 rounded-md bg-green-50 text-green-800 border border-green-200 text-sm font-medium">
+          ✅ {{ message }}
         </div>
+        
+        <div v-if="error" class="p-4 rounded-md bg-red-50 text-red-800 border border-red-200 text-sm font-medium">
+          ❌ {{ error }}
+        </div>
+      </div>
     </div>
+  </div>
 </template>
-
-<style scoped>
-/* Pequeno ajuste para o cartão ficar bonito */
-.card {
-    max-width: 500px;
-    margin: 2rem auto;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-</style>

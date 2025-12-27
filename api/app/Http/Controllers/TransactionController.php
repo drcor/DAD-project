@@ -92,4 +92,15 @@ class TransactionController extends Controller
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
+
+    public function index(Request $request)
+    {
+        $transactions = $request->user()
+            ->transactions()
+            ->with('type')
+            ->orderBy('transaction_datetime', 'desc')
+            ->get();
+
+        return response()->json(['data' => $transactions]);
+    }
 }

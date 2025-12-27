@@ -4,6 +4,7 @@ import LaravelPage from '@/pages/testing/LaravelPage.vue'
 import WebsocketsPage from '@/pages/testing/WebsocketsPage.vue'
 import CoinStore from '@/pages/Coin/CoinStore.vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import HistoryPage from '@/pages/Transactions/HistoryPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,7 +33,14 @@ const router = createRouter({
     {
       path: '/store',
       name: 'store',
-      component: CoinStore
+      component: CoinStore,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transactions',
+      name: 'TransactionHistory',
+      component: HistoryPage,
+      meta: { requiresAuth: true } // Garante que só utilizadores logados acedem
     },
   ],
 })
