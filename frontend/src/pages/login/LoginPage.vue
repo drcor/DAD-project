@@ -74,14 +74,20 @@ const formData = ref({
 })
 
 const handleSubmit = async () => {
-  toast.promise(authStore.login(formData.value), {
-    loading: 'Calling API',
-    success: (data) => {
-      return `Login Sucessfull - ${data?.name}`
-    },
-    error: (data) => `[API] Error saving game - ${data?.response?.data?.message}`,
-  })
+  try {
+    // Attempt login
+    const data = await authStore.login(formData.value)
 
-  router.push('/')
+    // Show success toast
+    toast.success(`Login successful - Welcome ${data?.name}!`)
+
+    // Redirect to home page only on success
+    router.push('/')
+  } catch (error) {
+    // Login failed - show error and stay on login page
+    const message = error?.response?.data?.message || 'Invalid credentials'
+    toast.error(`Login failed - ${message}`)
+    console.error('Login error:', error)
+  }
 }
 </script>
