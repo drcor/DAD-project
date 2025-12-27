@@ -3,10 +3,71 @@
 namespace App\Http\Controllers;
 
 use App\Models\Game;
+use App\Services\GamePersistenceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class GameController extends Controller
 {
+    protected $persistenceService;
+
+    public function __construct(GamePersistenceService $persistenceService)
+    {
+        $this->persistenceService = $persistenceService;
+    }
+
+    /**
+     * Persist a game from WebSocket server
+     * 
+     * POST /api/games/persist
+     */
+    public function persist(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'variant' => 'required|in:3,9',
+                'type' => 'required|in:standalone,match',
+                'player1' => 'required|integer',
+                'player2' => 'required|integer',
+                'player1Points' => 'required|integer|min:0|max:120',
+                'player2Points' => 'required|integer|min:0|max:120',
+                'beganAt' => 'nullable|date',
+                'endedAt' => 'nullable|date',
+                'moves' => 'nullable|integer|min:0',
+                'matchId' => 'nullable|integer',
+                'resigned' => 'nullable|boolean',
+                'timeout' => 'nullable|boolean'
+            ]);
+
+            $game = $this->persistenceService->saveGame($validated);
+
+            if ($game) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Game persisted successfully',
+                    'id' => $game->id
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to persist game'
+            ], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Game persistence endpoint error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation or persistence error'
+            ], 400);
+        }
+    }
+
     /**
      * Display a listing of the resource.
      */

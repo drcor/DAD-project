@@ -5,7 +5,15 @@ import { inject, ref } from 'vue'
 export const useAPIStore = defineStore('api', () => {
   const API_BASE_URL = inject('apiBaseURL')
 
-  const token = ref()
+  // Load token from sessionStorage on init
+  const savedToken = sessionStorage.getItem('authToken')
+  const token = ref(savedToken || undefined)
+  
+  // Set axios header if token exists
+  if (savedToken) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`
+  }
+
   const gameQueryParameters = ref({
     page: 1,
     filters: {
@@ -20,11 +28,15 @@ export const useAPIStore = defineStore('api', () => {
   const postLogin = async (credentials) => {
     const response = await axios.post(`${API_BASE_URL}/login`, credentials)
     token.value = response.data.token
+    // Save token to sessionStorage
+    sessionStorage.setItem('authToken', response.data.token)
     axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
   }
   const postLogout = async () => {
     await axios.post(`${API_BASE_URL}/logout`)
     token.value = undefined
+    // Remove token from sessionStorage
+    sessionStorage.removeItem('authToken')
     delete axios.defaults.headers.common['Authorization']
   }
 

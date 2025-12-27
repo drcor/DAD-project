@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Match as MatchModel;
 
-class Game extends Model
+class Match extends Model
 {
     public $timestamps = false;
 
@@ -13,14 +12,15 @@ class Game extends Model
         'type',
         'player1_user_id',
         'player2_user_id',
-        'is_draw',
         'winner_user_id',
         'loser_user_id',
-        'match_id',
         'status',
+        'stake',
         'began_at',
         'ended_at',
         'total_time',
+        'player1_marks',
+        'player2_marks',
         'player1_points',
         'player2_points',
         'custom'
@@ -31,7 +31,9 @@ class Game extends Model
         'ended_at' => 'datetime',
         'custom' => 'array',
         'total_time' => 'decimal:2',
-        'is_draw' => 'boolean',
+        'stake' => 'integer',
+        'player1_marks' => 'integer',
+        'player2_marks' => 'integer',
         'player1_points' => 'integer',
         'player2_points' => 'integer'
     ];
@@ -57,8 +59,8 @@ class Game extends Model
         return $this->belongsTo(User::class, 'loser_user_id');
     }
 
-    public function match()
+    public function games()
     {
-        return $this->belongsTo(MatchModel::class);
+        return $this->hasMany(Game::class);
     }
 }
