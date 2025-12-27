@@ -7,9 +7,34 @@ export const useGameStore = defineStore('game', () => {
 
   const TRICK_CLEAR_DELAY_MS = 1000
 
-  const ranks = {
-    'A': 11, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 10, 'J': 3, 'Q': 2, 'K': 4
+  // Point values for scoring (how many points each card is worth at end of game)
+  const cardPoints = {
+    'A': 11,  // Ace
+    '7': 10,  // Seven (Bisca/Manilha)
+    'K': 4,   // King
+    'J': 3,   // Jack
+    'Q': 2,   // Queen
+    '2': 0,
+    '3': 0,
+    '4': 0,
+    '5': 0,
+    '6': 0
   }
+
+  // Rank values for comparison (which card beats which in a trick)
+  const cardRanks = {
+    'A': 8,   // Ace is highest
+    '7': 7,   // Seven is second highest
+    'K': 6,   // King
+    'J': 5,   // Jack
+    'Q': 4,   // Queen
+    '6': 3,
+    '5': 2,
+    '4': 1,
+    '3': 0,
+    '2': -1
+  }
+
   const suits = [
     { sym: '♠', color: 'text-black-200' },
     { sym: '♥', color: 'text-red-500' },
@@ -90,7 +115,7 @@ export const useGameStore = defineStore('game', () => {
 
     // Create cards
     suits.forEach(s => {
-      Object.keys(ranks).forEach(r => {
+      Object.keys(cardPoints).forEach(r => {
         cards.push({
           id: idCounter++,
           rank: r,
@@ -216,13 +241,22 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /**
-   * Get card number of points
+   * Get card number of points (for scoring)
    * @param {object} card 
    * @returns {number}
    */
-  const cardPoints = (card) => {
-    return ranks[card.rank];
-  };
+  const getCardPoints = (card) => {
+    return cardPoints[card.rank] || 0
+  }
+
+  /**
+   * Get card rank value (for comparison)
+   * @param {object} card 
+   * @returns {number}
+   */
+  const getCardRank = (card) => {
+    return cardRanks[card.rank] || 0
+  }
 
   /**
    * Return true if cardA beats cardB under current rules and trump
@@ -231,8 +265,11 @@ export const useGameStore = defineStore('game', () => {
    */
   const cardBeats = (cardA, cardB) => {
     if (!cardA || !cardB) return false
-    // Same suit: higher points wins
-    if (cardA.suit === cardB.suit) return cardPoints(cardA) > cardPoints(cardB)
+
+    // Same suit: higher rank wins (NOT points!)
+    if (cardA.suit === cardB.suit) {
+      return getCardRank(cardA) > getCardRank(cardB)
+    }
 
     // If A is trump and B is not trump, A wins
     if (trump.value && cardA.suit === trump.value.suit && cardB.suit !== trump.value.suit) return true
@@ -240,28 +277,31 @@ export const useGameStore = defineStore('game', () => {
     // If B is trump and A is not, A cannot beat B
     if (trump.value && cardB.suit === trump.value.suit && cardA.suit !== trump.value.suit) return false
 
-    // Otherwise A cannot beat B
-    return false
+    // Different suits, neither is trump: first card (A) wins
+    return true
   }
 
 
   /**
-   * Check if player1 is the winner
+   * Check if player1 is the winner of current trick
    * @returns {boolean}
    */
   const wins = () => {
     const c1 = played1.value
     const c2 = played2.value
-    if (c1.suit === c2.suit)
-      // If same suit, higher points wins; use strict comparison (>) to match cardBeats
-      // so the second player cannot overturn a tie by playing an equal-value card.
-      return cardPoints(c1) > cardPoints(c2);
 
-    if (c1.suit === trump.value.suit) return true;
-    if (c2.suit === trump.value.suit) return false;
+    // Same suit: compare by rank (not points!)
+    if (c1.suit === c2.suit) {
+      return getCardRank(c1) > getCardRank(c2)
+    }
 
-    return true; // the first player wins if there is no trump
-  };
+    // Trump logic
+    if (c1.suit === trump.value.suit) return true
+    if (c2.suit === trump.value.suit) return false
+
+    // First player wins if neither is trump
+    return true
+  }
 
   const clearPlayedCards = () => {
     const isPlayer1Winner = wins();
@@ -354,16 +394,16 @@ export const useGameStore = defineStore('game', () => {
 
       if (winningCandidates.length > 0) {
         // choose the lowest-value card among winners to conserve strength
-        const play = winningCandidates.reduce((prev, curr) => cardPoints(curr) < cardPoints(prev) ? curr : prev)
+        const play = winningCandidates.reduce((prev, curr) => getCardPoints(curr) < getCardPoints(prev) ? curr : prev)
         playCard(play, false)
       } else {
         // cannot win: play the lowest-value card
-        const minCard = hand2.value.reduce((prev, curr) => cardPoints(curr) < cardPoints(prev) ? curr : prev)
+        const minCard = hand2.value.reduce((prev, curr) => getCardPoints(curr) < getCardPoints(prev) ? curr : prev)
         playCard(minCard, false)
       }
     } else {
       // If first to play, play lowest value card
-      const minCard = hand2.value.reduce((prev, curr) => cardPoints(curr) < cardPoints(prev) ? curr : prev);
+      const minCard = hand2.value.reduce((prev, curr) => getCardPoints(curr) < getCardPoints(prev) ? curr : prev);
       playCard(minCard, false)
     }
   }
@@ -403,7 +443,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   const computePoints = (cards) => {
-    return (cards || []).reduce((sum, c) => sum + (cardPoints(c) || 0), 0)
+    return (cards || []).reduce((sum, c) => sum + (getCardPoints(c) || 0), 0)
   }
 
   const detectGameEnd = () => {
@@ -648,8 +688,10 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     // Cards details
-    ranks,
     suits,
+    // Helper functions
+    getCardPoints,
+    getCardRank,
     // Game board data
     trump,
     deck,
@@ -695,7 +737,6 @@ export const useGameStore = defineStore('game', () => {
     setBoard,
     dealCards,
     playCard,
-    cardPoints,
     startMatch,
     startStandaloneGame,
     startNextGame,
