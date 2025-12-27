@@ -4,9 +4,12 @@ import LobbyPage from '@/pages/game/LobbyPage.vue'
 import MultiPlayerPage from '@/pages/game/MultiPlayerPage.vue'
 import HomePage from '@/pages/home/HomePage.vue'
 import LoginPage from '@/pages/login/LoginPage.vue'
+import RegisterPage from '@/pages/auth/RegisterPage.vue'
+import ProfilePage from '@/pages/profile/ProfilePage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
 import WebsocketsPage from '@/pages/testing/WebsocketsPage.vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,6 +21,17 @@ const router = createRouter({
     {
       path: '/login',
       component: LoginPage,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/register',
+      component: RegisterPage,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/profile',
+      component: ProfilePage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/testing',
@@ -45,15 +59,38 @@ const router = createRouter({
         },
         {
           path: 'lobby',
-          component: LobbyPage
+          component: LobbyPage,
+          meta: { requiresAuth: true },
         },
         {
           path: 'multiplayer/:id',
-          component: MultiPlayerPage
+          component: MultiPlayerPage,
+          meta: { requiresAuth: true },
         }
       ]
     }
   ],
 })
 
+// Navigation guards
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()
+
+  // Try to restore session if not already logged in
+  if (!authStore.isLoggedIn) {
+    await authStore.restoreSession()
+  }
+
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    // Redirect to login if authentication is required
+    next('/login')
+  } else if (to.meta.guestOnly && authStore.isLoggedIn) {
+    // Redirect to home if already logged in
+    next('/')
+  } else {
+    next()
+  }
+})
+
 export default router
+

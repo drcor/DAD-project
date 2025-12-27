@@ -26,6 +26,14 @@ export const useAuthStore = defineStore('auth', () => {
     return response.data
   }
 
+  const register = async (userData) => {
+    const response = await apiStore.postRegister(userData)
+    currentUser.value = response.data.user
+    // Save user to sessionStorage
+    sessionStorage.setItem('currentUser', JSON.stringify(response.data.user))
+    return response.data
+  }
+
   const logout = async () => {
     await apiStore.postLogout()
     currentUser.value = undefined
@@ -56,6 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     currentUserID,
     login,
+    register,
     logout,
     restoreSession,
   }

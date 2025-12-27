@@ -8,7 +8,7 @@ export const useAPIStore = defineStore('api', () => {
   // Load token from sessionStorage on init
   const savedToken = sessionStorage.getItem('authToken')
   const token = ref(savedToken || undefined)
-  
+
   // Set axios header if token exists
   if (savedToken) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`
@@ -25,6 +25,27 @@ export const useAPIStore = defineStore('api', () => {
   })
 
   // AUTH
+  const postRegister = async (userData) => {
+    const formData = new FormData()
+    formData.append('email', userData.email)
+    formData.append('nickname', userData.nickname)
+    formData.append('name', userData.name)
+    formData.append('password', userData.password)
+    if (userData.photo) {
+      formData.append('photo', userData.photo)
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/register`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    token.value = response.data.token
+    sessionStorage.setItem('authToken', response.data.token)
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+    return response
+  }
+
   const postLogin = async (credentials) => {
     const response = await axios.post(`${API_BASE_URL}/login`, credentials)
     token.value = response.data.token
@@ -32,6 +53,7 @@ export const useAPIStore = defineStore('api', () => {
     sessionStorage.setItem('authToken', response.data.token)
     axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
   }
+
   const postLogout = async () => {
     await axios.post(`${API_BASE_URL}/logout`)
     token.value = undefined
@@ -40,9 +62,41 @@ export const useAPIStore = defineStore('api', () => {
     delete axios.defaults.headers.common['Authorization']
   }
 
-  // Users
+  // Users / Profile
   const getAuthUser = () => {
     return axios.get(`${API_BASE_URL}/users/me`)
+  }
+
+  const getProfile = () => {
+    return axios.get(`${API_BASE_URL}/profile`)
+  }
+
+  const updateProfile = (userData) => {
+    return axios.put(`${API_BASE_URL}/profile`, userData)
+  }
+
+  const updatePassword = (passwordData) => {
+    return axios.put(`${API_BASE_URL}/profile/password`, passwordData)
+  }
+
+  const uploadPhoto = (photo) => {
+    const formData = new FormData()
+    formData.append('photo', photo)
+    return axios.post(`${API_BASE_URL}/profile/photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  }
+
+  const deletePhoto = () => {
+    return axios.delete(`${API_BASE_URL}/profile/photo`)
+  }
+
+  const deleteAccount = (confirmation) => {
+    return axios.delete(`${API_BASE_URL}/profile`, {
+      data: { confirmation },
+    })
   }
 
   //Games
@@ -66,9 +120,16 @@ export const useAPIStore = defineStore('api', () => {
   }
 
   return {
+    postRegister,
     postLogin,
     postLogout,
     getAuthUser,
+    getProfile,
+    updateProfile,
+    updatePassword,
+    uploadPhoto,
+    deletePhoto,
+    deleteAccount,
     getGames,
     gameQueryParameters,
   }
