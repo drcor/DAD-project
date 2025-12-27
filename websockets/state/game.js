@@ -512,7 +512,42 @@ export const resignGame = (gameID, playerId) => {
 
     // Opponent wins by resignation
     game.winner = game.player1 === playerId ? game.player2 : game.player1
+    const isPlayer1Resigned = playerId === game.player1
     console.log(`[resignGame] Winner by resignation: ${game.winner}`)
+
+    // Award all remaining cards to the opponent (including trump)
+    const resignedHand = isPlayer1Resigned ? game.player1Hand : game.player2Hand
+    const opponentHand = isPlayer1Resigned ? game.player2Hand : game.player1Hand
+
+    const allRemainingCards = [
+        ...resignedHand,
+        ...opponentHand,
+        ...game.deck
+    ]
+
+    // Include trump card if it exists
+    if (game.trump) {
+        allRemainingCards.push(game.trump)
+    }
+
+    const remainingPoints = allRemainingCards.reduce((sum, card) => {
+        return sum + getCardPoints(card)
+    }, 0)
+
+    console.log(`[resignGame] ${allRemainingCards.length} cards worth ${remainingPoints} points awarded to ${game.winner}`)
+
+    // Add all cards to opponent's spoils
+    if (isPlayer1Resigned) {
+        game.player2Spoils.push(...allRemainingCards)
+        game.player1Hand = []
+        game.player2Hand = []
+    } else {
+        game.player1Spoils.push(...allRemainingCards)
+        game.player1Hand = []
+        game.player2Hand = []
+    }
+    game.deck = []
+    game.trump = null // Clear trump since it's been awarded
 
     game.complete = true
     game.status = 'completed'
@@ -636,13 +671,18 @@ function handleTimeout(game, io) {
     const timedOutHand = isPlayer1TimedOut ? game.player1Hand : game.player2Hand
     const opponentHand = isPlayer1TimedOut ? game.player2Hand : game.player1Hand
 
-    // Award all remaining cards to opponent
-    // Opponent gets: their hand + timed-out player's hand + remaining deck
+    // Award all remaining cards to opponent (including trump)
+    // Opponent gets: their hand + timed-out player's hand + remaining deck + trump
     const allRemainingCards = [
         ...timedOutHand,
         ...opponentHand,
         ...game.deck
     ]
+
+    // Include trump card if it exists
+    if (game.trump) {
+        allRemainingCards.push(game.trump)
+    }
 
     // Calculate points from all remaining cards
     const remainingPoints = allRemainingCards.reduce((sum, card) => {
@@ -662,6 +702,7 @@ function handleTimeout(game, io) {
         game.player2Hand = []
     }
     game.deck = []
+    game.trump = null // Clear trump since it's been awarded
 
     // Force game to end
     game.complete = true
@@ -709,8 +750,9 @@ function handleTimeout(game, io) {
             socketsInRoom.forEach(socketId => {
                 const playerSocket = io.sockets.sockets.get(socketId)
                 if (playerSocket) {
-                    // We'll send a generic state that works for both players
-                    // The complete flag is most important here
+                    const playerId = playerSocket.data?.userId
+                    const isPlayer1 = playerId === game.player1
+
                     const state = {
                         id: game.id,
                         variant: game.variant,
@@ -726,18 +768,19 @@ function handleTimeout(game, io) {
                         myHand: [],
                         opponentHandCount: 0,
                         deck: [],
-                        trump: game.trump,
+                        trump: null, // Trump has been awarded
                         myPlayed: null,
                         opponentPlayed: null,
-                        mySpoils: [],
-                        opponentSpoils: [],
-                        // Match state - send both perspectives
+                        // Send actual spoils so points can be calculated
+                        mySpoils: isPlayer1 ? game.player1Spoils : game.player2Spoils,
+                        opponentSpoils: isPlayer1 ? game.player2Spoils : game.player1Spoils,
+                        // Match state
                         isMatch: game.isMatch,
                         currentGameNumber: game.currentGameNumber,
                         player1Marks: game.player1Marks,
                         player2Marks: game.player2Marks,
-                        myMarks: 0, // Will be overridden by proper handler
-                        opponentMarks: 0, // Will be overridden by proper handler
+                        myMarks: isPlayer1 ? game.player1Marks : game.player2Marks,
+                        opponentMarks: isPlayer1 ? game.player2Marks : game.player1Marks,
                         matchWinner: game.matchWinner,
                         matchOver: game.matchOver,
                         // Timer
