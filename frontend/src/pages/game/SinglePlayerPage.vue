@@ -1,23 +1,23 @@
 <template>
   <div class="flex flex-1 select-none">
     <!-- SIDEBAR -->
-    <aside class="w-80 p-4 space-y-4">
+    <aside class="w-80 p-4 space-y-3 overflow-y-auto">
       <!-- Match Progress (if playing a match) -->
-      <div v-if="gameStore.isMatch" class="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+      <div v-if="gameStore.isMatch" class="bg-purple-50 border-2 border-purple-200 rounded-lg p-3">
         <h3 class="text-sm font-bold text-purple-700 mb-2">Match Progress</h3>
         <div class="space-y-2">
           <div class="flex justify-between items-center">
             <span class="text-xs text-gray-600">Game {{ gameStore.currentGameNumber }}</span>
           </div>
-          <div class="flex items-center gap-2">
-            <div class="flex-1">
+          <div class="space-y-3">
+            <div>
               <div class="text-xs text-gray-600 mb-1">Your Marks</div>
               <div class="flex gap-1">
                 <div
                   v-for="i in 4"
                   :key="`p1-${i}`"
                   :class="[
-                    'w-6 h-6 rounded border-2',
+                    'w-6 h-6 rounded border-2 flex-shrink-0',
                     i <= gameStore.player1Marks
                       ? 'bg-green-500 border-green-600'
                       : 'bg-white border-gray-300',
@@ -25,14 +25,14 @@
                 ></div>
               </div>
             </div>
-            <div class="flex-1">
+            <div>
               <div class="text-xs text-gray-600 mb-1">Bot Marks</div>
               <div class="flex gap-1">
                 <div
                   v-for="i in 4"
                   :key="`p2-${i}`"
                   :class="[
-                    'w-6 h-6 rounded border-2',
+                    'w-6 h-6 rounded border-2 flex-shrink-0',
                     i <= gameStore.player2Marks
                       ? 'bg-red-500 border-red-600'
                       : 'bg-white border-gray-300',
@@ -44,7 +44,19 @@
         </div>
       </div>
 
-      <h2 class="text-lg font-semibold">Cards</h2>
+      <!-- Game Info -->
+      <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-3">
+        <h3 class="text-sm font-bold text-gray-700 mb-2">Game Info</h3>
+        <div class="space-y-1 text-xs text-gray-600">
+          <p><span class="font-medium">Variant:</span> Bisca de {{ gameStore.variant }}</p>
+          <p>
+            <span class="font-medium">Type:</span> {{ gameStore.isMatch ? 'match' : 'standalone' }}
+          </p>
+          <p><span class="font-medium">Opponent:</span> Bot</p>
+        </div>
+      </div>
+
+      <h2 class="text-lg font-semibold">Deck</h2>
       <Deck :deck="gameStore.deck" :trump="gameStore.trump" />
     </aside>
 
@@ -80,7 +92,16 @@
 
     <div class="flex flex-row gap-2 justify-center">
       <template v-for="card in gameStore.hand1">
-        <GameCard :key="card.id" v-if="card" :card="card" @clicked="handleCardClick" />
+        <GameCard
+          :key="card.id"
+          v-if="card"
+          :card="card"
+          @clicked="handleCardClick"
+          :class="{
+            'cursor-pointer hover:scale-105 transition-transform':
+              gameStore.currentPlayer === 'player',
+          }"
+        />
       </template>
     </div>
   </footer>
@@ -179,9 +200,7 @@
           <span v-else-if="gameStore.matchWinner === 'bot'" class="text-red-600"
             >Bot Won the Match</span
           >
-          <span v-else class="text-gray-600"
-            >Match Tied!</span
-          >
+          <span v-else class="text-gray-600">Match Tied!</span>
         </p>
 
         <!-- Final match score -->
