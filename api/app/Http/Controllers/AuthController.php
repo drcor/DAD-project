@@ -24,6 +24,16 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        \Log::info('Registration request received', [
+            'all_data' => $request->all(),
+            'has_photo' => $request->hasFile('photo'),
+            'photo_info' => $request->hasFile('photo') ? [
+                'size' => $request->file('photo')->getSize(),
+                'mime' => $request->file('photo')->getMimeType(),
+                'extension' => $request->file('photo')->getClientOriginalExtension(),
+            ] : null,
+        ]);
+
         $validated = $request->validate([
             'email' => 'required|email|unique:users,email',
             'nickname' => 'required|string|min:3|max:20|unique:users,nickname',
@@ -31,6 +41,8 @@ class AuthController extends Controller
             'password' => 'required|string|min:3',
             'photo' => 'nullable|image|max:2048', // 2MB max
         ]);
+
+        \Log::info('Registration validation passed', ['validated' => array_keys($validated)]);
 
         // Handle photo upload if provided
         $photoFilename = null;

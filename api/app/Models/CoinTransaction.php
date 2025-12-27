@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Match as MatchModel;
 
 class CoinTransaction extends Model
 {
@@ -40,7 +41,7 @@ class CoinTransaction extends Model
      */
     public function match()
     {
-        return $this->belongsTo(Match::class);
+        return $this->belongsTo(MatchModel::class, 'match_id');
     }
 
     /**

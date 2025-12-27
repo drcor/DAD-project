@@ -28,9 +28,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const register = async (userData) => {
     const response = await apiStore.postRegister(userData)
-    currentUser.value = response.data.user
-    // Save user to sessionStorage
-    sessionStorage.setItem('currentUser', JSON.stringify(response.data.user))
     return response.data
   }
 

@@ -205,18 +205,30 @@ const handleRegister = async () => {
   loading.value = true
 
   try {
-    const response = await authStore.register(formData.value)
-    successMessage.value = response.message || 'Registration successful!'
+    console.log('Submitting registration with data:', {
+      email: formData.value.email,
+      nickname: formData.value.nickname,
+      name: formData.value.name,
+      hasPassword: !!formData.value.password,
+      hasPhoto: !!formData.value.photo,
+      photoSize: formData.value.photo?.size,
+    })
 
-    // Redirect to home after 2 seconds
+    const response = await authStore.register(formData.value)
+    successMessage.value = response.message || 'Registration successful! Please login.'
+
+    // Redirect to login page after 2 seconds
     setTimeout(() => {
-      router.push('/')
+      router.push('/login')
     }, 2000)
   } catch (error) {
     console.error('Registration error:', error)
+    console.error('Error response:', error.response?.data)
+
     if (error.response?.data?.errors) {
       // Laravel validation errors
       const errors = error.response.data.errors
+      console.error('Validation errors:', errors)
       errorMessage.value = Object.values(errors).flat().join(', ')
     } else if (error.response?.data?.message) {
       errorMessage.value = error.response.data.message

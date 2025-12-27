@@ -8,7 +8,7 @@ export const useAPIStore = defineStore('api', () => {
   // Load token from sessionStorage on init
   const savedToken = sessionStorage.getItem('authToken')
   const token = ref(savedToken || undefined)
-  
+
   // Set axios header if token exists
   if (savedToken) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`
@@ -26,13 +26,24 @@ export const useAPIStore = defineStore('api', () => {
 
   // AUTH
   const postRegister = async (userData) => {
+    console.log('API Store: Creating FormData for registration')
     const formData = new FormData()
     formData.append('email', userData.email)
     formData.append('nickname', userData.nickname)
     formData.append('name', userData.name)
     formData.append('password', userData.password)
     if (userData.photo) {
+      console.log('API Store: Appending photo:', {
+        name: userData.photo.name,
+        size: userData.photo.size,
+        type: userData.photo.type,
+      })
       formData.append('photo', userData.photo)
+    }
+
+    console.log('API Store: FormData entries:')
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value instanceof File ? `File(${value.name})` : value)
     }
 
     const response = await axios.post(`${API_BASE_URL}/register`, formData, {
@@ -40,9 +51,6 @@ export const useAPIStore = defineStore('api', () => {
         'Content-Type': 'multipart/form-data',
       },
     })
-    token.value = response.data.token
-    sessionStorage.setItem('authToken', response.data.token)
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
     return response
   }
 
