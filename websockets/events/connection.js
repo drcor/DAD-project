@@ -20,7 +20,7 @@ export const handleConnectionEvents = (io, socket) => {
 
   socket.on("disconnect", () => {
     console.log("Connection Lost:", socket.id)
-    const user = removeUser(socket.id)
+    removeUser(socket.id)
     console.log(`[Connection] ${getUserCount()} users online`)
   })
 }

@@ -28,13 +28,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/profile', [UserController::class, 'destroy']);
 
     // Matches
+    Route::post('logout', [AuthController::class, 'logout']);
+
+    // Persistence routes for WebSocket server (no auth required for internal calls)
+    Route::post('/games/persist', [GameController::class, 'persist']);
+    Route::post('/matches/persist', [MatchController::class, 'persist']);
+    
+    // Match routes with auth
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/matches/{id}', [MatchController::class, 'show']);
 });
 
 Route::apiResource('games', GameController::class);
-
-// Persistence routes for WebSocket server (no auth required for internal calls)
-Route::post('/games/persist', [GameController::class, 'persist']);
-Route::post('/matches/persist', [MatchController::class, 'persist']);
-

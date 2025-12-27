@@ -229,7 +229,7 @@ export const playCard = (gameID, cardId, playerId) => {
     }
 }
 
-const getCardPoints = (card) => {
+export const getCardPoints = (card) => {
     return cardPoints[card.rank] || 0
 }
 
@@ -631,7 +631,9 @@ function startMoveTimer(game, io) {
         console.log(`[startMoveTimer] Timeout! Game ${game.id}, player ${game.currentPlayer} forfeits`)
         handleTimeout(game, io)
     }, 20000)
-}/**
+}
+
+/**
  * Clear the move timer
  * @param {Object} game - The game object
  */

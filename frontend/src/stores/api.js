@@ -8,7 +8,7 @@ export const useAPIStore = defineStore('api', () => {
   // Load token from sessionStorage on init
   const savedToken = sessionStorage.getItem('authToken')
   const token = ref(savedToken || undefined)
-
+  
   // Set axios header if token exists
   if (savedToken) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`

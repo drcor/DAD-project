@@ -319,7 +319,7 @@ export const useGameStore = defineStore('game', () => {
     // winner -> 'player' starts next, otherwise 'bot'
     currentPlayer.value = isPlayer1Winner ? 'player' : 'bot'
 
-    dealNewTrick()
+    dealNewTrick(isPlayer1Winner)
 
     // If the bot won the trick and is scheduled to lead next, make sure it actually gets scheduled.
     // Edge case: `currentPlayer` might already be 'bot' (player set it earlier), so the watcher
@@ -370,17 +370,30 @@ export const useGameStore = defineStore('game', () => {
     spoils2.value = spoils2.value.filter(Boolean)
   }
 
-  const dealNewTrick = () => {
+  const dealNewTrick = (isPlayer1Winner) => {
     if (deck.value.length === 0) return
 
     if (deck.value.length === 1) {
-      hand1.value.push(deck.value.shift())
-      hand2.value.push(trump.value)
+      // Last card - winner gets deck card, loser gets trump (like multiplayer)
+      if (isPlayer1Winner) {
+        hand1.value.push(deck.value.shift())
+        hand2.value.push(trump.value)
+      } else {
+        hand2.value.push(deck.value.shift())
+        hand1.value.push(trump.value)
+      }
+      trump.value = {} // Clear trump after it's dealt
       return
     }
 
-    hand1.value.push(deck.value.shift())
-    hand2.value.push(deck.value.shift())
+    // Normal deal - winner draws first
+    if (isPlayer1Winner) {
+      hand1.value.push(deck.value.shift())
+      hand2.value.push(deck.value.shift())
+    } else {
+      hand2.value.push(deck.value.shift())
+      hand1.value.push(deck.value.shift())
+    }
   }
 
 
