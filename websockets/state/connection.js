@@ -16,7 +16,7 @@ export const getUser = (socketID) => {
 
 export const getUserByID = (userID) => {
     for (let [socketID, user] of users.entries()) {
-        if (user.id == userID) {
+        if (user.id === userID) {
             return {
                 user,
                 socketID,

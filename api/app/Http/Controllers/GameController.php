@@ -55,15 +55,15 @@ class GameController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            Log::error('Game persistence endpoint error:', [
+            Log::error('Game persistence endpoint error', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Validation or persistence error',
-                'error' => $e->getMessage()
+                'message' => 'Validation or persistence error'
             ], 400);
         }
     }

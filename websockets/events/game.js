@@ -7,6 +7,7 @@ import {
     dealCards,
     playCard,
     resolveTrick,
+    getCardPoints,
     resignGame,
     prepareNextMatchGame,
     startMoveTimer,
@@ -287,16 +288,16 @@ export const handleGameEvents = (io, socket) => {
                                 if (playerSocket && playerUser) {
                                     const state = getGameStateForPlayer(resolvedGame, playerUser.id)
                                     playerSocket.emit('game-state', state)
-
                                     // If game is over, send game-over event
                                     if (resolvedGame.complete) {
                                         playerSocket.emit('game-over', {
                                             winner: resolvedGame.winner,
-                                            player1Points: resolvedGame.player1Spoils.reduce((sum, c) => sum + (c.rank ? 0 : 0), 0),
-                                            player2Points: resolvedGame.player2Spoils.reduce((sum, c) => sum + (c.rank ? 0 : 0), 0),
+                                            player1Points: resolvedGame.player1Spoils.reduce((sum, c) => sum + getCardPoints(c), 0),
+                                            player2Points: resolvedGame.player2Spoils.reduce((sum, c) => sum + getCardPoints(c), 0),
                                             matchOver: resolvedGame.matchOver,
                                             matchWinner: resolvedGame.matchWinner
                                         })
+                                    }
                                     }
                                 }
                             })

@@ -631,7 +631,9 @@ function startMoveTimer(game, io) {
         console.log(`[startMoveTimer] Timeout! Game ${game.id}, player ${game.currentPlayer} forfeits`)
         handleTimeout(game, io)
     }, 20000)
-}/**
+}
+
+/**
  * Clear the move timer
  * @param {Object} game - The game object
  */
