@@ -1,3 +1,5 @@
+import { apiClient } from '../api/client.js'
+
 const games = new Map()
 let currentGameID = 0
 
@@ -466,6 +468,9 @@ const checkForGameEnd = (game) => {
 
         game.endedAt = new Date()
         console.log(`[checkForGameEnd] Game end processing complete - complete: ${game.complete}, needsNextGame: ${game.needsNextGame}`)
+
+        // Persist game to database (async, non-blocking)
+        persistGameToDatabase(game)
     }
 }
 
@@ -531,6 +536,9 @@ export const resignGame = (gameID, playerId) => {
         game.matchOver = true
         console.log(`[resignGame] Match forfeited - winner: ${game.matchWinner}`)
     }
+
+    // Persist resigned game to database
+    persistGameToDatabase(game, { resigned: true })
 
     return game
 }
@@ -750,6 +758,47 @@ function handleTimeout(game, io) {
             matchOver: game.matchOver,
             matchWinner: game.matchWinner
         })
+
+        // Persist timeout game to database
+        persistGameToDatabase(game, { timeout: true })
+    }
+}
+
+/**
+ * Persist game to database
+ * @param {Object} game - Game state object
+ * @param {Object} options - Additional options (resigned, timeout, etc.)
+ */
+export const persistGameToDatabase = async (game, options = {}) => {
+    if (!game.player1 || !game.player2) {
+        console.log('[Persistence] Skipping game - missing players')
+        return
+    }
+
+    try {
+        console.log(`[Persistence] Saving game ${game.id} to database...`)
+
+        // Save or update match first if this is a match game
+        if (game.isMatch) {
+            const matchData = await apiClient.saveMatch(game)
+            if (matchData && matchData.id) {
+                game.dbMatchId = matchData.id
+                console.log(`[Persistence] Match saved/updated - DB ID: ${matchData.id}`)
+            }
+        }
+
+        // Save the game
+        const gameData = await apiClient.saveGame({
+            ...game,
+            resigned: options.resigned || false,
+            timeout: options.timeout || false
+        })
+
+        if (gameData && gameData.id) {
+            console.log(`[Persistence] Game saved successfully - DB ID: ${gameData.id}`)
+        }
+    } catch (error) {
+        console.error(`[Persistence] Failed to persist game ${game.id}:`, error.message)
     }
 }
 
