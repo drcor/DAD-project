@@ -73,13 +73,14 @@ class TransactionController extends Controller
                 'coins' => $coinsEarned,
             ]);
 
+            // Store purchase record (payment_reference is automatically encrypted via model cast)
             CoinPurchase::create([
                 'purchase_datetime' => now(),
                 'user_id' => $user->id,
                 'coin_transaction_id' => $transaction->id,
                 'euros' => $validated['value'],
                 'payment_type' => $validated['type'],
-                'payment_reference' => $validated['reference'],
+                'payment_reference' => $validated['reference'],  // Encrypted in database
             ]);
 
             $user->coins_balance += $coinsEarned;

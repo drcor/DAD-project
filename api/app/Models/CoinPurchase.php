@@ -24,6 +24,7 @@ class CoinPurchase extends Model
     protected $casts = [
         'purchase_datetime' => 'datetime',
         'euros' => 'decimal:2',
+        'payment_reference' => 'encrypted',  // Encrypt sensitive payment data
         'custom' => 'array'
     ];
 }
