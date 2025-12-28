@@ -56,6 +56,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Refresh user data (e.g., coin balance after transactions)
+  const refreshUserData = async () => {
+    if (!currentUser.value) {
+      console.warn('[Auth] Cannot refresh user data - not logged in')
+      return
+    }
+
+    try {
+      const response = await apiStore.getAuthUser()
+      currentUser.value = response.data
+      sessionStorage.setItem('currentUser', JSON.stringify(response.data))
+      console.log('[Auth] User data refreshed - new balance:', response.data.coins_balance)
+    } catch (error) {
+      console.error('[Auth] Failed to refresh user data:', error)
+    }
+  }
+
   return {
     currentUser,
     isLoggedIn,
@@ -64,5 +81,6 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     restoreSession,
+    refreshUserData,
   }
 })

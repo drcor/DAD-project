@@ -17,6 +17,11 @@ const store = useTransactionsStore()
 const authStore = useAuthStore()
 
 onMounted(() => {
+    // Refresh user data to ensure balance is up-to-date
+    authStore.refreshUserData()
+        .catch(err => console.error('Failed to refresh user data:', err))
+    
+    // Fetch transaction history
     store.fetchMyTransactions()
 })
 

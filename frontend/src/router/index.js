@@ -72,7 +72,7 @@ const router = createRouter({
       path: '/statistics',
       name: 'Statistics',
       component: StatisticsPage,
-      meta: { requiresAuth: true }
+      // No requiresAuth - statistics/leaderboards should be public
     },
     {
       path: '/game',

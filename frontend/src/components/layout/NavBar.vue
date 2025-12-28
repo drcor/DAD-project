@@ -18,7 +18,7 @@
         </NavigationMenuLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem v-if="userLoggedIn">
+      <NavigationMenuItem>
         <RouterLink to="/statistics" custom v-slot="{ href, navigate, isActive }">
           <a
             :href="href"

@@ -74,6 +74,10 @@ export const useSocketStore = defineStore('socket', () => {
             console.log(`[Socket] Game over:`, data)
             // The game state will be updated via game-state event
             // This event can be used for additional handling if needed
+            
+            // Refresh user data to update coin balance after game transactions
+            authStore.refreshUserData()
+                .catch(err => console.error('[Socket] Failed to refresh user data after game over:', err))
         })
 
         // Timer events
