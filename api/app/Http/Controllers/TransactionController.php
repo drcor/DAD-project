@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CoinPurchase;
 use App\Models\CoinTransaction;
+use App\Models\CoinTransactionType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -11,11 +12,18 @@ use Illuminate\Support\Facades\Http;
 class TransactionController extends Controller
 {
     // URL do gateway de pagamentos simulado
-    private $paymentGatewayUrl = 'https://dad-payments-api.vercel.app/api/debit';
+    private $paymentGatewayUrl;
+
+    public function __construct()
+    {
+        // Prefer config/services.php entry, fall back to env, then to the original URL
+        $this->paymentGatewayUrl = config('services.payments.gateway')
+            ?? env('PAYMENT_GATEWAY_URL', '');
+    }
 
     public function store(Request $request)
     {
-        // 1. Validação
+        // 1. Validation
         $validated = $request->validate([
             'type' => 'required|in:MBWAY,PAYPAL,IBAN,MB,VISA',
             'value' => 'required|integer|min:1|max:99',
@@ -37,8 +45,8 @@ class TransactionController extends Controller
             }],
         ]);
 
-        // 2. Comunicar com a API Externa
-        $response = Http::withoutVerifying()->post('https://dad-payments-api.vercel.app/api/debit', [
+        // 2. Comunicate with external API
+        $response = Http::post('https://dad-payments-api.vercel.app/api/debit', [
             'type' => $validated['type'],
             'reference' => $validated['reference'],
             'value' => (float) $validated['value']
@@ -51,18 +59,17 @@ class TransactionController extends Controller
             ], 422);
         }
 
-        // 3. Gravar na BD
+        // 3. Store in DB
         try {
             DB::beginTransaction();
 
             $user = $request->user();
-            $coinsEarned = $validated['value'] * 10; 
+            $coinsEarned = $validated['value'] * config('coins.purchase_rate', 10);
 
-            // ID 2 é "Coin purchase" (Vimos no teu seeder!)
             $transaction = CoinTransaction::create([
                 'transaction_datetime' => now(),
                 'user_id' => $user->id,
-                'coin_transaction_type_id' => 2, 
+                'coin_transaction_type_id' => CoinTransactionType::COIN_PURCHASE, 
                 'coins' => $coinsEarned,
             ]);
 

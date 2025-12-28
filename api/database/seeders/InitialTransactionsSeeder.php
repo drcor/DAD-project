@@ -5,13 +5,20 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use App\Models\CoinTransactionType;
 use stdClass;
 
 class InitialTransactionsSeeder extends Seeder
 {
     private $allPlayers;
     private $sizeOfSaveBlock = 200;
-    private $valueOfInitialBonus = 10;
+    private $valueOfInitialBonus;
+    
+    public function __construct()
+    {
+        $this->valueOfInitialBonus = config('coins.welcome_bonus', 10);
+    }
+    
     public function run(): void
     {
         $this->allPlayers = DB::table('users')->where('type', 'P')->get();
@@ -48,7 +55,7 @@ class InitialTransactionsSeeder extends Seeder
             'user_id' => $player->id,
             'match_id' => null,
             'game_id' => null,
-            'coin_transaction_type_id' => 1,
+            'coin_transaction_type_id' => CoinTransactionType::BONUS,
             'coins' => $this->valueOfInitialBonus,
             'custom' => null,
         ];

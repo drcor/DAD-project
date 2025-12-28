@@ -9,19 +9,19 @@ class StatisticsController extends Controller
 {
     public function index()
     {
-        // 1. Top Jogadores por Moedas (Esta coluna EXISTE na tabela USERS)
-        $totalCoins = User::where('type', 'P') // Apenas Jogadores
+        // 1. Top players by coins (this column EXISTS in the USERS table)
+        $totalCoins = User::where('type', 'P') // Players only
             ->orderBy('coins_balance', 'desc') //
             ->take(10)
             ->get(['id', 'nickname', 'coins_balance', 'photo_filename']);
 
-        // 2. Top Jogadores por Vitórias (Coluna NÃO existe, temos de contar)
+        // 2. Top players by victories (column does NOT exist, we have to count)
         $totalVictories = User::where('type', 'P')
-            // 'gamesWon as total_victories' cria uma coluna virtual com a contagem
+            // 'gamesWon as total_victories' creates a virtual column with the count
             ->withCount(['gamesWon as total_victories']) 
             ->orderBy('total_victories', 'desc')
             ->take(10)
-            ->get(['id', 'nickname', 'photo_filename']); // Não precisamos de selecionar total_victories aqui, o withCount já o adiciona
+            ->get(['id', 'nickname', 'photo_filename']); // We don't need to select total_victories here, withCount already adds it
 
         return response()->json([
             'top_coins' => $totalCoins,

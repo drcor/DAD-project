@@ -11,5 +11,13 @@ class CoinTransactionType extends Model
 
     protected $table = 'coin_transaction_types';
     
-    public $timestamps = false; 
+    public $timestamps = false;
+    
+    // Transaction type constants - must match database seeder values
+    const BONUS = 1;
+    const COIN_PURCHASE = 2;
+    const GAME_FEE = 3;
+    const MATCH_STAKE = 4;
+    const GAME_PAYOUT = 5;
+    const MATCH_PAYOUT = 6;
 }
