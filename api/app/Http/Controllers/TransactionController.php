@@ -66,6 +66,15 @@ class TransactionController extends Controller
             $user = $request->user();
             $coinsEarned = $validated['value'] * config('coins.purchase_rate', 10);
 
+            // Validate against integer overflow for financial security
+            $maxBalance = PHP_INT_MAX;
+            if ($coinsEarned < 0 || $user->coins_balance > $maxBalance - $coinsEarned) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Coin balance limit exceeded.',
+                ], 400);
+            }
+
             $transaction = CoinTransaction::create([
                 'transaction_datetime' => now(),
                 'user_id' => $user->id,
