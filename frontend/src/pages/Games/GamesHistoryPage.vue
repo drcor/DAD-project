@@ -93,7 +93,7 @@ const getGameResult = (game) => {
                         <td class="px-6 py-4">
                             <div class="flex flex-col">
                                 <span class="font-medium text-slate-900">
-                                    {{ game.type == 'M' ? 'Multiplayer' : 'Singleplayer' }}
+                                    {{ game.type === 'M' ? 'Multiplayer' : 'Singleplayer' }}
                                 </span>
                                 <span class="text-xs text-slate-500">
                                     ID: #{{ game.id }}

@@ -12,7 +12,6 @@ const wsConnection = import.meta.env.VITE_WS_CONNECTION
 
 axios.defaults.baseURL = `http://${apiDomain}`
 
-axios.defaults.withCredentials = false 
 
 const app = createApp(App)
 

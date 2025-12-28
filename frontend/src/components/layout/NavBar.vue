@@ -8,65 +8,65 @@
         </NavigationMenuLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem>
-            <RouterLink to="/statistics" custom v-slot="{ href, navigate, isActive }">
-              <a
-                :href="href"
-                @click="navigate"
-                :class="[
-                  'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
-                  isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
-                ]"
-              >
-                🏆 Estatísticas
-              </a>
-            </RouterLink>
-          </NavigationMenuItem>
+      <NavigationMenuItem v-if="userLoggedIn">
+        <RouterLink to="/statistics" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            🏆 Statistics
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
 
-          <NavigationMenuItem v-if="userLoggedIn">
-            <RouterLink to="/games" custom v-slot="{ href, navigate, isActive }">
-              <a
-                :href="href"
-                @click="navigate"
-                :class="[
-                  'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
-                  isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
-                ]"
-              >
-                🎮 Jogos
-              </a>
-            </RouterLink>
-          </NavigationMenuItem>
+      <NavigationMenuItem v-if="userLoggedIn">
+        <RouterLink to="/games" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            🎮 Game History
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
 
-          <NavigationMenuItem v-if="userLoggedIn">
-            <RouterLink to="/store" custom v-slot="{ href, navigate, isActive }">
-              <a
-                :href="href"
-                @click="navigate"
-                :class="[
-                  'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
-                  isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
-                ]"
-              >
-                💰 Moedas
-              </a>
-            </RouterLink>
-          </NavigationMenuItem>
+      <NavigationMenuItem v-if="userLoggedIn">
+        <RouterLink to="/store" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            💰 Coins
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
 
-          <NavigationMenuItem v-if="userLoggedIn">
-            <RouterLink to="/transactions" custom v-slot="{ href, navigate, isActive }">
-              <a
-                :href="href"
-                @click="navigate"
-                :class="[
-                  'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
-                  isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
-                ]"
-              >
-                📊 Transações
-              </a>
-            </RouterLink>
-          </NavigationMenuItem>
+      <NavigationMenuItem v-if="userLoggedIn">
+        <RouterLink to="/transactions" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            📊 Transactions
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
 
       <!-- User Logged In -->
       <template v-if="userLoggedIn">
@@ -132,8 +132,8 @@
 import {
   NavigationMenu,
   NavigationMenuItem,
-  NavigationMenuList,  
-  NavigationMenuLink
+  NavigationMenuList,
+  NavigationMenuLink,
 } from '@/components/ui/navigation-menu'
 
 const emits = defineEmits(['logout'])
