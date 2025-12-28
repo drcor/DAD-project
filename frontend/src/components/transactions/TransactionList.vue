@@ -20,18 +20,18 @@ const formatDate = (dateStr) => {
 
 <template>
     <div class="space-y-4">
-        <h2 class="text-2xl font-bold">Histórico de Movimentos</h2>
+        <h2 class="text-2xl font-bold">Transaction History</h2>
 
-        <div v-if="store.loading" class="text-gray-500">A carregar...</div>
+        <div v-if="store.loading" class="text-gray-500">Loading...</div>
 
         <div v-else class="border rounded-lg overflow-hidden">
             <table class="w-full text-sm text-left">
                 <thead class="bg-gray-100 text-gray-700 uppercase">
                     <tr>
-                        <th class="px-6 py-3">Data</th>
-                        <th class="px-6 py-3">Tipo</th>
-                        <th class="px-6 py-3">Valor</th>
-                        <th class="px-6 py-3">Descrição</th>
+                        <th class="px-6 py-3">Date</th>
+                        <th class="px-6 py-3">Type</th>
+                        <th class="px-6 py-3">Amount</th>
+                        <th class="px-6 py-3">Description</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,10 +40,10 @@ const formatDate = (dateStr) => {
 
                         <td class="p-4 align-middle">
                             <Badge :variant="t.coins > 0 ? 'secondary' : 'destructive'">
-                                {{ t.coins > 0 ? 'Entrada' : 'Saída' }}
+                                {{ t.coins > 0 ? 'Income' : 'Expense' }}
                             </Badge>
                             <span class="ml-2 text-xs text-gray-500">
-                                {{ t.type ? t.type.name : 'Transação' }}
+                                {{ t.type ? t.type.name : 'Transaction' }}
                             </span>
                         </td>
 
@@ -55,7 +55,7 @@ const formatDate = (dateStr) => {
 
                     <tr v-if="store.transactions.length === 0">
                         <td colspan="3" class="p-4 text-center text-gray-500">
-                            Ainda não existem transações.
+                            No transactions yet.
                         </td>
                     </tr>
                 </tbody>

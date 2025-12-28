@@ -90,7 +90,7 @@ const router = createRouter({
 // Navigation guard to enforce authentication
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  
+
   // Check if route requires authentication
   if (to.meta.requiresAuth && !authStore.currentUser) {
     // Redirect to login page if not authenticated

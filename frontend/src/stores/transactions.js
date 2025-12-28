@@ -15,8 +15,8 @@ export const useTransactionsStore = defineStore('transactions', () => {
             
             transactions.value = response.data.data 
         } catch (e) {
-            console.error("Erro ao buscar transações:", e)
-            error.value = 'Não foi possível carregar o histórico.'
+            console.error("Error fetching transactions:", e)
+            error.value = 'Unable to load transaction history.'
         } finally {
             loading.value = false
         }

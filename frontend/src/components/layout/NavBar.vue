@@ -138,7 +138,7 @@ import {
 
 const emits = defineEmits(['logout'])
 
-// Apenas defineProps, sem guardar numa variável que não é usada
+// Just defineProps, without storing in an unused variable
 defineProps(['userLoggedIn'])
 
 const logoutClickHandler = () => {

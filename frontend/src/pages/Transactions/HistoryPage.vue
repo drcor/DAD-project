@@ -1,9 +1,9 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useTransactionsStore } from '@/stores/transactions'
-import { useAuthStore } from '@/stores/auth' // Para mostrar o saldo total
+import { useAuthStore } from '@/stores/auth' // To show total balance
 import { Badge } from '@/components/ui/badge'
-// Ícones
+// Icons
 import { 
   Loader2, 
   History, 
@@ -20,11 +20,11 @@ onMounted(() => {
     store.fetchMyTransactions()
 })
 
-// Formatar data (ex: 27/12/2024 18:30)
+// Format date (e.g.: 27/12/2024 18:30)
 const formatDate = (dateStr) => {
     if (!dateStr) return '-'
     const date = new Date(dateStr)
-    return new Intl.DateTimeFormat('pt-PT', {
+    return new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -44,16 +44,16 @@ const formatDate = (dateStr) => {
         <div class="space-y-1.5">
           <h3 class="font-semibold tracking-tight text-2xl flex items-center gap-2">
             <History class="w-6 h-6 text-blue-600" />
-            Histórico de Transações
+            Transaction History
           </h3>
           <p class="text-sm text-slate-500">
-            Consulta todos os movimentos da tua carteira virtual.
+            View all your virtual wallet movements.
           </p>
         </div>
 
         <div class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
             <Wallet class="w-4 h-4 text-slate-500" />
-            <span class="text-sm font-medium text-slate-600">Saldo Atual:</span>
+            <span class="text-sm font-medium text-slate-600">Current Balance:</span>
             <span class="font-bold text-slate-900">{{ authStore.currentUser?.coins_balance ?? 0 }} 🪙</span>
         </div>
       </div>
@@ -62,7 +62,7 @@ const formatDate = (dateStr) => {
         
         <div v-if="store.loading" class="py-12 flex flex-col items-center justify-center text-slate-500">
             <Loader2 class="w-8 h-8 animate-spin mb-2 text-primary" />
-            <p>A carregar movimentos...</p>
+            <p>Loading transactions...</p>
         </div>
 
         <div v-else-if="store.error" class="py-12 flex flex-col items-center justify-center text-red-500">
@@ -74,9 +74,9 @@ const formatDate = (dateStr) => {
             <table class="w-full text-sm text-left">
                 <thead class="bg-slate-50/80 text-slate-500 uppercase text-xs font-semibold">
                     <tr>
-                        <th class="px-6 py-4">Data</th>
-                        <th class="px-6 py-4">Descrição / Tipo</th>
-                        <th class="px-6 py-4 text-right">Valor</th>
+                        <th class="px-6 py-4">Date</th>
+                        <th class="px-6 py-4">Description / Type</th>
+                        <th class="px-6 py-4 text-right">Amount</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -95,10 +95,10 @@ const formatDate = (dateStr) => {
                                 
                                 <div>
                                     <div class="font-medium text-slate-900">
-                                        {{ t.type ? t.type.name : 'Movimento' }}
+                                        {{ t.type ? t.type.name : 'Transaction' }}
                                     </div>
                                     <div class="text-xs text-slate-500">
-                                        {{ t.coins > 0 ? 'Crédito na carteira' : 'Débito na carteira' }}
+                                        {{ t.coins > 0 ? 'Wallet credit' : 'Wallet debit' }}
                                     </div>
                                 </div>
                             </div>
@@ -109,7 +109,7 @@ const formatDate = (dateStr) => {
                                    :class="t.coins > 0 
                                       ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
                                       : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'">
-                                {{ t.coins > 0 ? '+' : '' }}{{ t.coins }} moedas
+                                {{ t.coins > 0 ? '+' : '' }}{{ t.coins }} coins
                             </Badge>
                         </td>
                     </tr>
@@ -118,7 +118,7 @@ const formatDate = (dateStr) => {
                         <td colspan="3" class="px-6 py-12 text-center text-slate-500">
                             <div class="flex flex-col items-center gap-2">
                                 <History class="w-8 h-8 opacity-20" />
-                                <p>Ainda não tens movimentos registados.</p>
+                                <p>You don't have any registered transactions yet.</p>
                             </div>
                         </td>
                     </tr>

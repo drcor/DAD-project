@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 
 class TransactionController extends Controller
 {
-    // URL do gateway de pagamentos simulado
+    // Simulated payment gateway URL
     private $paymentGatewayUrl;
 
     public function __construct()
@@ -41,7 +41,7 @@ class TransactionController extends Controller
                 };
                 
                 if (!$isValid) {
-                    $fail("Referência inválida para pagamento via $type.");
+                    $fail("Invalid reference for payment via $type.");
                 }
             }],
         ]);
@@ -55,7 +55,7 @@ class TransactionController extends Controller
 
         if (!$response->successful()) {
             return response()->json([
-                'message' => 'Pagamento recusado pela entidade bancária.',
+                'message' => 'Payment declined by the banking entity.',
                 'errors' => $response->json()
             ], 422);
         }
@@ -99,7 +99,7 @@ class TransactionController extends Controller
             DB::commit();
 
             return response()->json([
-                'message' => 'Compra efetuada!',
+                'message' => 'Purchase successful!',
                 'balance' => $user->coins_balance,
                 'coins_added' => $coinsEarned
             ], 201);
@@ -112,9 +112,8 @@ class TransactionController extends Controller
                 'exception_trace' => $e->getTraceAsString(),
             ]);
             return response()->json([
-                'message' => 'Ocorreu um erro interno ao processar a compra. Por favor tente novamente mais tarde.'
+                'message' => 'An internal error occurred while processing the purchase. Please try again later.'
             ], 500);
-        }
         }
     }
 

@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
-// Componentes que TU TENS (Baseado na tua imagem)
+// UI Components (Based on shadcn/ui)
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { 
@@ -15,12 +15,12 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 
-// Ícones (Se der erro aqui, remove esta linha e as tags <Coins>, <Wallet>, etc.)
+// Icons (Remove this line if you get errors with lucide-vue-next)
 import { Loader2, Coins, Wallet, CreditCard } from 'lucide-vue-next'
 
 const userStore = useAuthStore()
 
-// --- Dados ---
+// --- Data ---
 const paymentType = ref('MBWAY')
 const reference = ref('')
 const value = ref(5)
@@ -36,19 +36,19 @@ const paymentMethods = [
   { value: 'PAYPAL', label: 'PayPal' },
 ]
 
-// --- Placeholder Dinâmico ---
+// --- Dynamic Placeholder ---
 const referencePlaceholder = computed(() => {
     switch (paymentType.value) {
         case 'MBWAY': return '912345678'
         case 'VISA': return '4000 0000 0000 0000'
         case 'IBAN': return 'PT50...'
         case 'MB': return '12345-123456789'
-        case 'PAYPAL': return 'email@exemplo.com'
-        default: return 'Referência'
+        case 'PAYPAL': return 'email@example.com'
+        default: return 'Reference'
     }
 })
 
-// --- Ação de Compra ---
+// --- Purchase Action ---
 async function buyCoins() {
     error.value = ''
     message.value = ''
@@ -64,7 +64,7 @@ async function buyCoins() {
         const gainedCoins = response.data.coins_added
         const newBalance = response.data.balance
         
-        message.value = `Sucesso! Adicionaste ${gainedCoins} moedas.`
+        message.value = `Success! You added ${gainedCoins} coins.`
         
         if (userStore.currentUser) {
             userStore.currentUser.coins_balance = newBalance
@@ -73,9 +73,9 @@ async function buyCoins() {
     } catch (e) {
         console.error(e)
         if (e.response?.status === 422) {
-            error.value = "Dados inválidos. Verifica a referência e o valor."
+            error.value = "Invalid data. Check the reference and value."
         } else {
-            error.value = "Erro ao processar pagamento."
+            error.value = "Error processing payment."
         }
     } finally {
         loading.value = false
@@ -91,15 +91,15 @@ async function buyCoins() {
       <div class="p-6 border-b border-slate-100 space-y-1.5">
         <div class="flex items-center gap-2 mb-2">
           <Badge variant="outline" class="bg-blue-50 text-blue-700 border-blue-200">
-            Loja Oficial
+            Official Store
           </Badge>
         </div>
         <h3 class="font-semibold tracking-tight text-2xl flex items-center gap-2">
           <Coins class="w-6 h-6 text-yellow-500" />
-          Comprar Moedas
+          Buy Coins
         </h3>
         <p class="text-sm text-slate-500">
-          Carrega a tua conta para jogares partidas multiplayer.
+          Top up your account to play multiplayer matches.
         </p>
       </div>
 
@@ -108,11 +108,11 @@ async function buyCoins() {
         <div class="bg-slate-50 p-4 rounded-lg flex items-center justify-between border border-slate-200">
           <div class="flex items-center gap-2 text-slate-600 font-medium">
             <Wallet class="w-5 h-5" />
-            <span>Saldo Atual</span>
+            <span>Current Balance</span>
           </div>
           <div class="text-2xl font-bold text-slate-900">
             {{ userStore.currentUser?.coins_balance ?? 0 }} 
-            <span class="text-sm font-normal text-slate-500">moedas</span>
+            <span class="text-sm font-normal text-slate-500">coins</span>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ async function buyCoins() {
           
           <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Quanto queres carregar? (€)
+                How much do you want to top up? (€)
             </label>
             <div class="flex items-center gap-4">
               <Input 
@@ -130,7 +130,7 @@ async function buyCoins() {
                 class="text-lg font-bold w-full"
               />
               <div class="text-right min-w-[100px]">
-                <div class="text-xs text-slate-500 uppercase font-semibold">Recebes</div>
+                <div class="text-xs text-slate-500 uppercase font-semibold">You Receive</div>
                 <div class="text-xl font-bold text-green-600">+ {{ value * 10 }} 🪙</div>
               </div>
             </div>
@@ -138,11 +138,11 @@ async function buyCoins() {
 
           <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Método de Pagamento
+                Payment Method
             </label>
             <Select v-model="paymentType">
               <SelectTrigger>
-                <SelectValue placeholder="Seleciona um método" />
+                <SelectValue placeholder="Select a method" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="method in paymentMethods" :key="method.value" :value="method.value">
@@ -154,7 +154,7 @@ async function buyCoins() {
 
           <div class="space-y-2">
             <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Dados de Pagamento
+                Payment Details
             </label>
             <div class="relative">
               <CreditCard class="absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -167,13 +167,13 @@ async function buyCoins() {
               />
             </div>
             <p class="text-xs text-slate-500">
-              Exemplo: {{ referencePlaceholder }}
+              Example: {{ referencePlaceholder }}
             </p>
           </div>
 
           <Button type="submit" class="w-full h-12 text-lg font-semibold bg-green-600 hover:bg-green-700 text-white" :disabled="loading">
             <Loader2 v-if="loading" class="mr-2 h-5 w-5 animate-spin" />
-            {{ loading ? 'A processar...' : 'Confirmar Compra' }}
+            {{ loading ? 'Processing...' : 'Confirm Purchase' }}
           </Button>
 
         </form>

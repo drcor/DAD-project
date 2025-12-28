@@ -11,15 +11,15 @@ export const useGamesStore = defineStore('games', () => {
         loading.value = true
         error.value = null
         try {
-            // GET /api/games (O Laravel normalmente filtra os jogos do user logado ou retorna todos)
-            // Se retornar todos, teremos de filtrar no front, mas vamos assumir que a API filtra.
+            // GET /api/games (Laravel typically filters games for the logged-in user or returns all)
+            // If it returns all, we'll need to filter on the frontend, but we'll assume the API filters.
             const response = await axios.get('/api/games')
-            
-            // Ajusta aqui se os dados vierem noutro formato (ex: response.data)
-            games.value = response.data.data 
+
+            // Adjust here if data comes in another format (e.g., response.data)
+            games.value = response.data.data
         } catch (e) {
-            console.error("Erro jogos:", e)
-            error.value = 'Não foi possível carregar o histórico de jogos.'
+            console.error("Games error:", e)
+            error.value = 'Unable to load game history.'
         } finally {
             loading.value = false
         }

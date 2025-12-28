@@ -16,8 +16,8 @@ export const useStatisticsStore = defineStore('statistics', () => {
             topCoins.value = response.data.top_coins
             topVictories.value = response.data.top_victories
         } catch (e) {
-            console.error("Erro stats:", e)
-            error.value = 'Não foi possível carregar as estatísticas.'
+            console.error("Statistics error:", e)
+            error.value = 'Unable to load statistics.'
         } finally {
             loading.value = false
         }
