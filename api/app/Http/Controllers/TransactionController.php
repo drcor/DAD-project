@@ -8,6 +8,7 @@ use App\Models\CoinTransactionType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class TransactionController extends Controller
 {
@@ -102,11 +103,18 @@ class TransactionController extends Controller
                 'balance' => $user->coins_balance,
                 'coins_added' => $coinsEarned
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
-            // Retorna o erro real para o Bruno (Só para debug!)
-            return response()->json(['message' => $e->getMessage()], 500);
+            // Log the exception server-side and return a generic message to the client
+            Log::error('Purchase transaction failed', [
+                'user_id' => $request->user()->id ?? null,
+                'exception_message' => $e->getMessage(),
+                'exception_trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'message' => 'Ocorreu um erro interno ao processar a compra. Por favor tente novamente mais tarde.'
+            ], 500);
+        }
         }
     }
 

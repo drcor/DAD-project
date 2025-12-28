@@ -22,7 +22,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/transactions', [TransactionController::class, 'store']);
     Route::get('/transactions', [TransactionController::class, 'index']);
 
-
     // Persistence routes for WebSocket server (no auth required for internal calls)
     Route::post('/games/persist', [GameController::class, 'persist']);
     Route::post('/matches/persist', [MatchController::class, 'persist']);
@@ -30,8 +29,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Match routes with auth
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/matches/{id}', [MatchController::class, 'show']);
-});
 
-Route::get('/statistics', [StatisticsController::class, 'index']);
+    // Statistics show nicknames, IDs, coin balances and victory counts
+    Route::get('/statistics', [StatisticsController::class, 'index']);
+});
 
 Route::apiResource('games', GameController::class);
