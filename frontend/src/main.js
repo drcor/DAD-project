@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { io } from 'socket.io-client'
+import axios from 'axios' // Mantém o import
 
 import App from './App.vue'
 import router from './router'
@@ -9,8 +10,8 @@ import { useAuthStore } from './stores/auth'
 const apiDomain = import.meta.env.VITE_API_DOMAIN
 const wsConnection = import.meta.env.VITE_WS_CONNECTION
 
-console.log('[main.js] api domain', apiDomain)
-console.log('[main.js] ws connection', wsConnection)
+axios.defaults.baseURL = `http://${apiDomain}`
+
 
 const app = createApp(App)
 
