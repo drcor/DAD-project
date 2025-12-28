@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
   // Initialize: restore session if token exists
   const restoreSession = async () => {
     const token = sessionStorage.getItem('authToken')
-    if (token && !currentUser.value) {
+    if (token) {
       try {
         const response = await apiStore.getAuthUser()
         currentUser.value = response.data

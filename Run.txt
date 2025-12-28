@@ -1,0 +1,12 @@
+//Laravel
+
+cd api
+php artisan serve
+
+//Vue
+cd frontend
+npm run dev
+
+//WebSockets
+cd WebSockets
+npm run dev

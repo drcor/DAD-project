@@ -8,7 +8,11 @@ import RegisterPage from '@/pages/auth/RegisterPage.vue'
 import ProfilePage from '@/pages/profile/ProfilePage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
 import WebsocketsPage from '@/pages/testing/WebsocketsPage.vue'
+import CoinStore from '@/pages/coin/CoinStore.vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import HistoryPage from '@/pages/transactions/HistoryPage.vue'
+import GamesHistoryPage from '@/pages/games/GamesHistoryPage.vue'
+import StatisticsPage from '@/pages/statistics/StatisticsPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -47,6 +51,30 @@ const router = createRouter({
       ],
     },
     {
+      path: '/store',
+      name: 'store',
+      component: CoinStore,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/transactions',
+      name: 'TransactionHistory',
+      component: HistoryPage,
+      meta: { requiresAuth: true } // Garante que só utilizadores logados acedem
+    },
+    {
+      path: '/games',
+      name: 'GamesHistory',
+      component: GamesHistoryPage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/statistics',
+      name: 'Statistics',
+      component: StatisticsPage,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/game',
       children: [
         {
@@ -60,12 +88,12 @@ const router = createRouter({
         {
           path: 'lobby',
           component: LobbyPage,
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true }
         },
         {
           path: 'multiplayer/:id',
           component: MultiPlayerPage,
-          meta: { requiresAuth: true },
+          meta: { requiresAuth: true }
         }
       ]
     }

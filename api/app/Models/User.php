@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\Match as MatchModel;
+use App\Models\Game;
 
 class User extends Authenticatable
 {
@@ -107,6 +108,14 @@ class User extends Authenticatable
     public function gamesAsPlayer2()
     {
         return $this->hasMany(Game::class, 'player2_user_id');
+    }
+
+    /**
+     * User transactions
+     */
+    public function transactions()
+    {
+        return $this->hasMany(CoinTransaction::class);
     }
 
     /**

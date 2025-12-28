@@ -4,12 +4,18 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\StatisticsController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Persistence routes for WebSocket server (no auth required for internal calls)
+Route::post('/games/persist', [GameController::class, 'persist']);
+Route::post('/matches/persist', [MatchController::class, 'persist']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -29,14 +35,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Matches
     Route::post('logout', [AuthController::class, 'logout']);
-
-    // Persistence routes for WebSocket server (no auth required for internal calls)
-    Route::post('/games/persist', [GameController::class, 'persist']);
-    Route::post('/matches/persist', [MatchController::class, 'persist']);
+    
+    // Coins transactions
+    Route::post('/transactions', [TransactionController::class, 'store']);
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    
+    // Game routes with auth
+    Route::get('/games', [GameController::class, 'index']);
+    Route::get('/games/{id}', [GameController::class, 'show']);
     
     // Match routes with auth
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/matches/{id}', [MatchController::class, 'show']);
-});
 
-Route::apiResource('games', GameController::class);
+    // Statistics show nicknames, IDs, coin balances and victory counts
+    Route::get('/statistics', [StatisticsController::class, 'index']);
+});

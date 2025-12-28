@@ -5,21 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Match as MatchModel;
+use App\Models\CoinTransactionType;
 
 class CoinTransaction extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    public $timestamps = false; 
 
     protected $fillable = [
-        'transaction_datetime',
+        'transaction_datetime', 
         'user_id',
-        'match_id',
-        'game_id',
         'coin_transaction_type_id',
         'coins',
-        'custom',
+        'game_id',
+        'match_id',
+        'custom'
     ];
 
     protected $casts = [
@@ -56,6 +57,14 @@ class CoinTransaction extends Model
      * Get the transaction type
      */
     public function transactionType()
+    {
+        return $this->belongsTo(CoinTransactionType::class, 'coin_transaction_type_id');
+    }
+
+    /**
+     * Alias for transactionType relationship (for backward compatibility)
+     */
+    public function type()
     {
         return $this->belongsTo(CoinTransactionType::class, 'coin_transaction_type_id');
     }
