@@ -132,7 +132,8 @@
 import {
   NavigationMenu,
   NavigationMenuItem,
-  NavigationMenuList
+  NavigationMenuList,  
+  NavigationMenuLink
 } from '@/components/ui/navigation-menu'
 
 const emits = defineEmits(['logout'])
