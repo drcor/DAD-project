@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Match as MatchModel;
 
 class Game extends Model
 {
@@ -63,8 +62,8 @@ class Game extends Model
         return $this->belongsTo(User::class, 'loser_user_id');
     }
 
-    public function match()
+    public function gameMatch()
     {
-        return $this->belongsTo(MatchModel::class);
+        return $this->belongsTo(GameMatch::class, 'match_id');
     }
 }

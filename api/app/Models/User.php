@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use App\Models\Match as MatchModel;
+use App\Models\GameMatch;
 use App\Models\Game;
 
 class User extends Authenticatable
@@ -139,7 +139,7 @@ class User extends Authenticatable
      */
     public function matchesAsPlayer1()
     {
-        return $this->hasMany(MatchModel::class, 'player1_user_id');
+        return $this->hasMany(GameMatch::class, 'player1_user_id');
     }
 
     /**
@@ -147,7 +147,7 @@ class User extends Authenticatable
      */
     public function matchesAsPlayer2()
     {
-        return $this->hasMany(MatchModel::class, 'player2_user_id');
+        return $this->hasMany(GameMatch::class, 'player2_user_id');
     }
 
     /**
@@ -155,7 +155,7 @@ class User extends Authenticatable
      */
     public function matchesWon()
     {
-        return $this->hasMany(MatchModel::class, 'winner_user_id');
+        return $this->hasMany(GameMatch::class, 'winner_user_id');
     }
 
     /**
@@ -163,7 +163,7 @@ class User extends Authenticatable
      */
     public function matchesLost()
     {
-        return $this->hasMany(MatchModel::class, 'loser_user_id');
+        return $this->hasMany(GameMatch::class, 'loser_user_id');
     }
 
     /**

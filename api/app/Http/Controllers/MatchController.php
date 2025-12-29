@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Match as MatchModel;
+use App\Models\GameMatch;
 use App\Services\GamePersistenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -107,7 +107,7 @@ class MatchController extends Controller
      */
     public function index(Request $request)
     {
-        $query = MatchModel::with(['player1', 'player2', 'winner']);
+        $query = GameMatch::with(['player1', 'player2', 'winner']);
 
         if ($request->has('user_id')) {
             $userId = $request->user_id;
@@ -131,7 +131,7 @@ class MatchController extends Controller
      */
     public function show($id)
     {
-        $match = MatchModel::with(['player1', 'player2', 'winner', 'loser', 'games'])->findOrFail($id);
+        $match = GameMatch::with(['player1', 'player2', 'winner', 'loser', 'games'])->findOrFail($id);
         return response()->json($match);
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Game;
-use App\Models\Match as MatchModel;
+use App\Models\GameMatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -91,7 +91,7 @@ class GamePersistenceService
      * Save or update a match to the database
      * 
      * @param array $matchData Match data from WebSocket server
-     * @return MatchModel|null
+     * @return GameMatch|null
      */
     public function saveMatch(array $matchData)
     {
@@ -120,7 +120,7 @@ class GamePersistenceService
             // Check if match already exists in DB
             $match = null;
             if (isset($matchData['dbMatchId'])) {
-                $match = MatchModel::find($matchData['dbMatchId']);
+                $match = GameMatch::find($matchData['dbMatchId']);
             }
 
             $matchDbData = [
@@ -149,7 +149,7 @@ class GamePersistenceService
                 $match->update($matchDbData);
             } else {
                 // Create new match
-                $match = MatchModel::create($matchDbData);
+                $match = GameMatch::create($matchDbData);
             }
 
             DB::commit();

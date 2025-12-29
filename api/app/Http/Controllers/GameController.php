@@ -113,7 +113,7 @@ class GameController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Game::query()->with(['winner']);
+        $query = Game::query()->with(['winner', 'loser', 'player1', 'player2', 'gameMatch']);
 
         if ($request->has('type') && in_array($request->type, ['3', '9'])) {
             $query->where('type', $request->type);
@@ -165,9 +165,10 @@ class GameController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Game $game)
+    public function show($id)
     {
-        //
+        $game = Game::with(['winner', 'loser', 'player1', 'player2', 'gameMatch'])->findOrFail($id);
+        return response()->json($game);
     }
 
     /**

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Match;
+use App\Models\GameMatch;
 use App\Models\User;
 use App\Services\TransactionService;
 use Illuminate\Http\Request;
@@ -63,7 +63,7 @@ class MatchTransactionController extends Controller
                 'stake' => 'required|integer|min:3|max:100',
             ]);
 
-            $match = Match::findOrFail($validated['match_id']);
+            $match = GameMatch::findOrFail($validated['match_id']);
             $player1 = User::findOrFail($validated['player1_id']);
             $player2 = User::findOrFail($validated['player2_id']);
             $matchId = $validated['match_id'];
@@ -144,7 +144,7 @@ class MatchTransactionController extends Controller
                 'total_stake' => 'required|integer|min:6|max:200',
             ]);
 
-            $match = Match::findOrFail($validated['match_id']);
+            $match = GameMatch::findOrFail($validated['match_id']);
             $winner = User::findOrFail($validated['winner_id']);
             $matchId = $validated['match_id'];
             $totalStake = $validated['total_stake'];
