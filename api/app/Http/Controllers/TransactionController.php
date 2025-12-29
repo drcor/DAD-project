@@ -119,12 +119,23 @@ class TransactionController extends Controller
 
     public function index(Request $request)
     {
-        $transactions = $request->user()
+        $query = $request->user()
             ->transactions()
             ->with('type')
-            ->orderBy('transaction_datetime', 'desc')
-            ->get();
+            ->orderBy('transaction_datetime', 'desc');
 
-        return response()->json(['data' => $transactions]);
+        // Pagination
+        $perPage = $request->input('per_page', 15);
+        $transactions = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $transactions->items(),
+            'meta' => [
+                'current_page' => $transactions->currentPage(),
+                'last_page' => $transactions->lastPage(),
+                'per_page' => $transactions->perPage(),
+                'total' => $transactions->total(),
+            ]
+        ]);
     }
 }
