@@ -145,15 +145,16 @@ export const dealCards = (gameID) => {
     if (game.isMatch) {
         // For matches, deduct stake only on the first game
         if (game.currentGameNumber === 1) {
-            const stake = 3 // Default stake
+            const stake = 3 // Default stake per player
             apiClient.deductMatchStake(gameID, game.player1, game.player2, stake)
                 .catch(err => console.error(`[dealCards] Failed to deduct match stakes for game ${gameID}:`, err.message))
         }
+        // Note: No game entry fee for match games - only the match stake
+    } else {
+        // For standalone games, deduct the 2-coin entry fee
+        apiClient.deductGameFee(gameID, game.player1, game.player2)
+            .catch(err => console.error(`[dealCards] Failed to deduct game fees for game ${gameID}:`, err.message))
     }
-
-    // Always deduct game entry fee (2 coins) for all games
-    apiClient.deductGameFee(gameID, game.player1, game.player2)
-        .catch(err => console.error(`[dealCards] Failed to deduct game fees for game ${gameID}:`, err.message))
 
     return game
 }
