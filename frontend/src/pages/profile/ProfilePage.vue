@@ -197,7 +197,7 @@
             </form>
 
             <!-- Delete Account Section -->
-            <div class="pt-6 border-t border-gray-200">
+            <div v-if="profile?.type !== 'A'" class="pt-6 border-t border-gray-200">
               <h3 class="text-lg font-medium text-red-600">Danger Zone</h3>
               <p class="mt-2 text-sm text-gray-600">
                 Once you delete your account, there is no going back. All coins will be forfeited.
@@ -208,6 +208,14 @@
               >
                 Delete Account
               </button>
+            </div>
+
+            <!-- Message for Administrators -->
+            <div v-else class="pt-6 border-t border-gray-200">
+              <h3 class="text-lg font-medium text-gray-600">Account Deletion</h3>
+              <p class="mt-2 text-sm text-gray-600">
+                Administrators cannot delete their own accounts for security reasons.
+              </p>
             </div>
           </template>
         </div>

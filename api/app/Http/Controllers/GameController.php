@@ -17,6 +17,43 @@ class GameController extends Controller
     }
 
     /**
+     * Check if request is authenticated (either user auth or internal API key)
+     * @param Request $request
+     * @return bool
+     * @throws \Exception
+     */
+    private function authenticateRequest(Request $request): bool
+    {
+        // Check for internal API key FIRST (for WebSocket server)
+        $apiKey = $request->header('X-Internal-API-Key');
+        $expectedKey = config('app.internal_api_key');
+        
+        Log::info('[Auth] Checking game persist authentication', [
+            'has_api_key_header' => !empty($apiKey),
+            'api_key_length' => $apiKey ? strlen($apiKey) : 0,
+            'has_expected_key' => !empty($expectedKey),
+            'expected_key_length' => $expectedKey ? strlen($expectedKey) : 0,
+            'keys_match' => $apiKey === $expectedKey,
+            'all_headers' => $request->headers->all()
+        ]);
+        
+        if ($apiKey && $expectedKey && $apiKey === $expectedKey) {
+            Log::info('[Auth] Internal API key authenticated successfully (Game Persist)');
+            return true;
+        }
+
+        // Check for user authentication
+        $user = $request->user();
+        if ($user) {
+            Log::info('[Auth] User authenticated (Game Persist)', ['user_id' => $user->id]);
+            return true;
+        }
+
+        Log::error('[Auth] Authentication failed (Game Persist)');
+        throw new \Exception('Authentication required');
+    }
+
+    /**
      * Persist a game from WebSocket server
      * 
      * POST /api/games/persist
@@ -24,6 +61,9 @@ class GameController extends Controller
     public function persist(Request $request)
     {
         try {
+            // Authenticate request (user or internal API key)
+            $this->authenticateRequest($request);
+
             $validated = $request->validate([
                 'variant' => 'required|in:3,9',
                 'type' => 'required|in:standalone,match',

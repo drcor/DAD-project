@@ -158,6 +158,5 @@ defineProps(['userLoggedIn'])
 
 const logoutClickHandler = () => {
   emits('logout')
-  emits('logout')
 }
 </script>

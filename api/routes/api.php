@@ -15,11 +15,13 @@ use App\Http\Controllers\StatisticsController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Persistence routes for WebSocket server (no auth required for internal calls)
+// Persistence routes - Protected with internal API key or Sanctum auth
+// These routes require X-Internal-API-Key header (for WebSocket server) or Bearer token (for users)
 Route::post('/games/persist', [GameController::class, 'persist']);
 Route::post('/matches/persist', [MatchController::class, 'persist']);
 
-// Transaction routes for WebSocket server (no auth required for internal calls)
+// Transaction routes - Protected with internal API key or Sanctum auth
+// These routes require X-Internal-API-Key header (for WebSocket server) or Bearer token (for users)
 Route::post('/games/transactions/fee', [GameTransactionController::class, 'deductFee']);
 Route::post('/games/transactions/payout', [GameTransactionController::class, 'awardPayout']);
 Route::post('/games/transactions/refund', [GameTransactionController::class, 'refundDraw']);
@@ -44,9 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/photo', [UserController::class, 'uploadPhoto']);
     Route::delete('/profile/photo', [UserController::class, 'deletePhoto']);
     Route::delete('/profile', [UserController::class, 'destroy']);
-
-    // Matches
-    Route::post('logout', [AuthController::class, 'logout']);
     
     // Coins transactions
     Route::post('/transactions', [TransactionController::class, 'store']);

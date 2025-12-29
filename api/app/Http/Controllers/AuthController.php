@@ -24,8 +24,8 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        // Avoid logging raw request bodies (contains sensitive data like passwords).
         \Log::info('Registration request received', [
-            'all_data' => $request->all(),
             'has_photo' => $request->hasFile('photo'),
             'photo_info' => $request->hasFile('photo') ? [
                 'size' => $request->file('photo')->getSize(),

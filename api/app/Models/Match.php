@@ -23,7 +23,9 @@ class Match extends Model
         'player2_marks',
         'player1_points',
         'player2_points',
-        'custom'
+        'custom',
+        'stakes_deducted',
+        'payout_awarded',
     ];
 
     protected $casts = [
@@ -35,7 +37,9 @@ class Match extends Model
         'player1_marks' => 'integer',
         'player2_marks' => 'integer',
         'player1_points' => 'integer',
-        'player2_points' => 'integer'
+        'player2_points' => 'integer',
+        'stakes_deducted' => 'boolean',
+        'payout_awarded' => 'boolean',
     ];
 
     // Relationships

@@ -23,7 +23,10 @@ class Game extends Model
         'total_time',
         'player1_points',
         'player2_points',
-        'custom'
+        'custom',
+        'fees_deducted',
+        'payout_awarded',
+        'refund_issued',
     ];
 
     protected $casts = [
@@ -33,7 +36,10 @@ class Game extends Model
         'total_time' => 'decimal:2',
         'is_draw' => 'boolean',
         'player1_points' => 'integer',
-        'player2_points' => 'integer'
+        'player2_points' => 'integer',
+        'fees_deducted' => 'boolean',
+        'payout_awarded' => 'boolean',
+        'refund_issued' => 'boolean',
     ];
 
     // Relationships

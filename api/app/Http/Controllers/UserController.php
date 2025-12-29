@@ -131,10 +131,18 @@ class UserController extends Controller
     /**
      * Delete the authenticated user's account
      * Requires confirmation (nickname or password)
+     * Administrators cannot delete their own accounts
      */
     public function destroy(Request $request)
     {
         $user = $request->user();
+
+        // Prevent administrators from deleting their own accounts
+        if ($user->isAdmin()) {
+            return response()->json([
+                'message' => 'Administrators cannot delete their own accounts.',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'confirmation' => 'required|string',
@@ -154,7 +162,7 @@ class UserController extends Controller
         if ($user->canBeHardDeleted()) {
             // Hard delete: remove photo and user record
             if ($user->photo_avatar_filename) {
-                Storage::delete('public/photos/' . $user->photo_avatar_filename);
+                Storage::delete('public/photos_avatars/' . $user->photo_avatar_filename);
             }
             
             // Delete all tokens

@@ -17,6 +17,34 @@ class MatchController extends Controller
     }
 
     /**
+     * Check if request is authenticated (either user auth or internal API key)
+     * @param Request $request
+     * @return bool
+     * @throws \Exception
+     */
+    private function authenticateRequest(Request $request): bool
+    {
+        // Check for internal API key FIRST (for WebSocket server)
+        $apiKey = $request->header('X-Internal-API-Key');
+        $expectedKey = config('app.internal_api_key');
+        
+        if ($apiKey && $expectedKey && $apiKey === $expectedKey) {
+            Log::info('[Auth] Internal API key authenticated successfully (Match Persist)');
+            return true;
+        }
+
+        // Check for user authentication
+        $user = $request->user();
+        if ($user) {
+            Log::info('[Auth] User authenticated (Match Persist)', ['user_id' => $user->id]);
+            return true;
+        }
+
+        Log::error('[Auth] Authentication failed (Match Persist)');
+        throw new \Exception('Authentication required');
+    }
+
+    /**
      * Persist a match from WebSocket server
      * 
      * POST /api/matches/persist
@@ -24,6 +52,9 @@ class MatchController extends Controller
     public function persist(Request $request)
     {
         try {
+            // Authenticate request (user or internal API key)
+            $this->authenticateRequest($request);
+
             $validated = $request->validate([
                 'variant' => 'required|in:3,9',
                 'player1' => 'required|integer',
