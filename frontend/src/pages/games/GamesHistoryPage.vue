@@ -4,7 +4,17 @@ import { useGamesStore } from '@/stores/games'
 import { useAuthStore } from '@/stores/auth'
 import { Badge } from '@/components/ui/badge'
 // Icons
-import { Loader2, Gamepad2, Trophy, XCircle, Clock, Swords, Users } from 'lucide-vue-next'
+import {
+  Loader2,
+  Gamepad2,
+  Trophy,
+  XCircle,
+  Clock,
+  Swords,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-vue-next'
 
 const store = useGamesStore()
 const authStore = useAuthStore()
@@ -18,6 +28,63 @@ onMounted(() => {
   // Fetch game history
   store.fetchMyGames()
 })
+
+// Pagination methods
+const goToPage = (page) => {
+  if (page >= 1 && page <= store.pagination.lastPage) {
+    store.fetchMyGames(page, store.pagination.perPage)
+  }
+}
+
+const nextPage = () => {
+  if (store.pagination.currentPage < store.pagination.lastPage) {
+    goToPage(store.pagination.currentPage + 1)
+  }
+}
+
+const previousPage = () => {
+  if (store.pagination.currentPage > 1) {
+    goToPage(store.pagination.currentPage - 1)
+  }
+}
+
+// Generate page numbers for pagination
+const getPageNumbers = () => {
+  const current = store.pagination.currentPage
+  const last = store.pagination.lastPage
+  const pages = []
+
+  if (last <= 7) {
+    // Show all pages if 7 or fewer
+    for (let i = 1; i <= last; i++) {
+      pages.push(i)
+    }
+  } else {
+    // Always show first page
+    pages.push(1)
+
+    if (current > 3) {
+      pages.push('...')
+    }
+
+    // Show pages around current
+    const start = Math.max(2, current - 1)
+    const end = Math.min(last - 1, current + 1)
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+
+    if (current < last - 2) {
+      pages.push('...')
+    }
+
+    // Always show last page
+    pages.push(last)
+  }
+
+  return pages
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
@@ -194,6 +261,70 @@ const closeModal = () => {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div
+          v-if="!store.loading && !store.error && store.games.length > 0"
+          class="border-t border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50/50"
+        >
+          <!-- Results info -->
+          <div class="text-sm text-slate-600">
+            Showing
+            <span class="font-medium">{{
+              (store.pagination.currentPage - 1) * store.pagination.perPage + 1
+            }}</span>
+            to
+            <span class="font-medium">{{
+              Math.min(
+                store.pagination.currentPage * store.pagination.perPage,
+                store.pagination.total,
+              )
+            }}</span>
+            of
+            <span class="font-medium">{{ store.pagination.total }}</span>
+            games
+          </div>
+
+          <!-- Page controls -->
+          <div class="flex items-center gap-2">
+            <button
+              @click="previousPage"
+              :disabled="store.pagination.currentPage === 1"
+              class="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              <ChevronLeft class="w-4 h-4" />
+              <span class="text-sm font-medium">Previous</span>
+            </button>
+
+            <!-- Page numbers -->
+            <div class="flex items-center gap-1">
+              <template v-for="page in getPageNumbers()" :key="page">
+                <button
+                  v-if="page !== '...'"
+                  @click="goToPage(page)"
+                  :class="[
+                    'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    page === store.pagination.currentPage
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-white border border-slate-300 hover:bg-slate-50',
+                  ]"
+                >
+                  {{ page }}
+                </button>
+                <span v-else class="px-2 text-slate-400">...</span>
+              </template>
+            </div>
+
+            <button
+              @click="nextPage"
+              :disabled="store.pagination.currentPage === store.pagination.lastPage"
+              class="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              <span class="text-sm font-medium">Next</span>
+              <ChevronRight class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
