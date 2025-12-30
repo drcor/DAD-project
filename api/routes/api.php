@@ -47,6 +47,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/profile/photo', [UserController::class, 'deletePhoto']);
     Route::delete('/profile', [UserController::class, 'destroy']);
     
+    // Personal statistics
+    Route::get('/users/me/statistics', [UserController::class, 'statistics']);
+    
     // Coins transactions
     Route::post('/transactions', [TransactionController::class, 'store']);
     Route::get('/transactions', [TransactionController::class, 'index']);

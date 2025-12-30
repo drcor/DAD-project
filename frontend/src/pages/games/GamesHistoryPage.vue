@@ -130,6 +130,39 @@ const getGameMode = (game) => {
   return { label: 'Multiplayer', icon: Users, color: 'blue' }
 }
 
+// Get player display information
+const getPlayerInfo = (game) => {
+  const myId = authStore.currentUser?.id
+
+  // Determine if user is player1 or player2
+  const isPlayer1 = game.player1_user_id === myId
+  const isPlayer2 = game.player2_user_id === myId
+
+  if (isPlayer1) {
+    return {
+      myName: 'You',
+      opponentName: game.player2?.nickname || game.player2?.name || 'Unknown',
+      myPoints: game.player1_points,
+      opponentPoints: game.player2_points,
+    }
+  } else if (isPlayer2) {
+    return {
+      myName: 'You',
+      opponentName: game.player1?.nickname || game.player1?.name || 'Unknown',
+      myPoints: game.player2_points,
+      opponentPoints: game.player1_points,
+    }
+  } else {
+    // Shouldn't happen (viewing someone else's game - admin view)
+    return {
+      myName: game.player1?.nickname || game.player1?.name || 'Player 1',
+      opponentName: game.player2?.nickname || game.player2?.name || 'Player 2',
+      myPoints: game.player1_points,
+      opponentPoints: game.player2_points,
+    }
+  }
+}
+
 const viewGameDetails = (game) => {
   selectedGame.value = game
   showModal.value = true
@@ -181,6 +214,7 @@ const closeModal = () => {
               <tr>
                 <th class="px-6 py-4">Date</th>
                 <th class="px-6 py-4">Type</th>
+                <th class="px-6 py-4">Players</th>
                 <th class="px-6 py-4">Status</th>
                 <th class="px-6 py-4 text-right">Result</th>
               </tr>
@@ -210,9 +244,21 @@ const closeModal = () => {
                     </div>
                     <div class="flex items-center gap-2 text-xs text-slate-500">
                       <span>Bisca de {{ game.type }}</span>
-                      <span>•</span>
-                      <span>ID: #{{ game.id }}</span>
+                      <template v-if="authStore.currentUser?.type === 'A'">
+                        <span>•</span>
+                        <span>ID: #{{ game.id }}</span>
+                      </template>
                     </div>
+                  </div>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900">{{ getPlayerInfo(game).myName }}</span>
+                    <span class="text-gray-400 text-sm">vs</span>
+                    <span class="font-medium text-gray-900">{{
+                      getPlayerInfo(game).opponentName
+                    }}</span>
                   </div>
                 </td>
 
@@ -345,7 +391,9 @@ const closeModal = () => {
               <Gamepad2 class="w-6 h-6 text-purple-600" />
               Game Details
             </h2>
-            <p class="text-sm text-slate-500 mt-1">Game #{{ selectedGame.id }}</p>
+            <p v-if="authStore.currentUser?.type === 'A'" class="text-sm text-slate-500 mt-1">
+              Game #{{ selectedGame.id }}
+            </p>
           </div>
           <button @click="closeModal" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
             <XCircle class="w-5 h-5 text-slate-400" />
@@ -354,8 +402,8 @@ const closeModal = () => {
 
         <!-- Modal Content -->
         <div class="p-6 space-y-6">
-          <!-- Game Type & Status -->
-          <div class="grid grid-cols-2 gap-4">
+          <!-- Game Type & Status & Result -->
+          <div class="grid grid-cols-3 gap-4">
             <div class="bg-slate-50 rounded-lg p-4">
               <div class="text-xs text-slate-500 uppercase font-semibold mb-1">Game Type</div>
               <div class="flex items-center gap-2">
@@ -384,6 +432,31 @@ const closeModal = () => {
                 {{ selectedGame.status }}
               </Badge>
             </div>
+
+            <div class="bg-slate-50 rounded-lg p-4">
+              <div class="text-xs text-slate-500 uppercase font-semibold mb-1">Result</div>
+              <div class="flex items-center gap-2">
+                <component
+                  :is="getGameResult(selectedGame).icon"
+                  class="w-5 h-5"
+                  :class="{
+                    'text-green-600': getGameResult(selectedGame).color === 'green',
+                    'text-red-600': getGameResult(selectedGame).color === 'red',
+                    'text-slate-600': getGameResult(selectedGame).color === 'slate',
+                  }"
+                />
+                <span
+                  class="font-semibold"
+                  :class="{
+                    'text-green-700': getGameResult(selectedGame).color === 'green',
+                    'text-red-700': getGameResult(selectedGame).color === 'red',
+                    'text-slate-700': getGameResult(selectedGame).color === 'slate',
+                  }"
+                >
+                  {{ getGameResult(selectedGame).label }}
+                </span>
+              </div>
+            </div>
           </div>
 
           <!-- Players & Result -->
@@ -393,27 +466,38 @@ const closeModal = () => {
               Players & Result
             </h3>
 
-            <!-- Player 1 -->
-            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <!-- Current User (You) -->
+            <div
+              class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
+            >
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Users class="w-5 h-5 text-blue-600" />
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <Users class="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <div class="font-semibold text-slate-900">
-                    {{ selectedGame.player1?.nickname || 'Player 1' }}
-                    <span
-                      v-if="selectedGame.player1_user_id === authStore.currentUser?.id"
-                      class="text-xs text-blue-600"
-                      >(You)</span
-                    >
+                    You
+                    <span class="text-xs text-blue-600 ml-1">
+                      ({{
+                        selectedGame.player1_user_id === authStore.currentUser?.id
+                          ? selectedGame.player1?.nickname || selectedGame.player1?.name
+                          : selectedGame.player2?.nickname || selectedGame.player2?.name
+                      }})
+                    </span>
                   </div>
                   <div class="text-sm text-slate-500">
-                    {{ selectedGame.player1_points || 0 }} points
+                    {{ getPlayerInfo(selectedGame).myPoints || 0 }} points
                   </div>
                 </div>
               </div>
-              <div v-if="selectedGame.winner_user_id === selectedGame.player1_user_id">
+              <div
+                v-if="
+                  (selectedGame.player1_user_id === authStore.currentUser?.id &&
+                    selectedGame.winner_user_id === selectedGame.player1_user_id) ||
+                  (selectedGame.player2_user_id === authStore.currentUser?.id &&
+                    selectedGame.winner_user_id === selectedGame.player2_user_id)
+                "
+              >
                 <Trophy class="w-6 h-6 text-yellow-500" />
               </div>
             </div>
@@ -421,27 +505,29 @@ const closeModal = () => {
             <!-- VS Divider -->
             <div class="text-center text-sm font-semibold text-slate-400">VS</div>
 
-            <!-- Player 2 -->
+            <!-- Opponent -->
             <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                  <Users class="w-5 h-5 text-red-600" />
+                <div class="w-10 h-10 bg-slate-300 rounded-full flex items-center justify-center">
+                  <Users class="w-5 h-5 text-slate-600" />
                 </div>
                 <div>
                   <div class="font-semibold text-slate-900">
-                    {{ selectedGame.player2?.nickname || 'Player 2' }}
-                    <span
-                      v-if="selectedGame.player2_user_id === authStore.currentUser?.id"
-                      class="text-xs text-blue-600"
-                      >(You)</span
-                    >
+                    {{ getPlayerInfo(selectedGame).opponentName }}
                   </div>
                   <div class="text-sm text-slate-500">
-                    {{ selectedGame.player2_points || 0 }} points
+                    {{ getPlayerInfo(selectedGame).opponentPoints || 0 }} points
                   </div>
                 </div>
               </div>
-              <div v-if="selectedGame.winner_user_id === selectedGame.player2_user_id">
+              <div
+                v-if="
+                  (selectedGame.player1_user_id !== authStore.currentUser?.id &&
+                    selectedGame.winner_user_id === selectedGame.player1_user_id) ||
+                  (selectedGame.player2_user_id !== authStore.currentUser?.id &&
+                    selectedGame.winner_user_id === selectedGame.player2_user_id)
+                "
+              >
                 <Trophy class="w-6 h-6 text-yellow-500" />
               </div>
             </div>
@@ -496,7 +582,7 @@ const closeModal = () => {
               Match Information
             </h3>
             <div class="space-y-2 text-sm">
-              <div class="flex justify-between">
+              <div v-if="authStore.currentUser?.type === 'A'" class="flex justify-between">
                 <span class="text-purple-700">Match ID:</span>
                 <span class="font-medium text-purple-900">#{{ selectedGame.match_id }}</span>
               </div>
@@ -509,42 +595,6 @@ const closeModal = () => {
                 <Badge variant="outline" class="bg-white">{{
                   selectedGame.game_match.status
                 }}</Badge>
-              </div>
-            </div>
-          </div>
-
-          <!-- Final Result -->
-          <div class="border-t border-slate-200 pt-4">
-            <div class="text-center">
-              <div
-                class="inline-flex items-center gap-2 px-6 py-3 rounded-lg"
-                :class="{
-                  'bg-green-50 border-2 border-green-200':
-                    getGameResult(selectedGame).color === 'green',
-                  'bg-red-50 border-2 border-red-200': getGameResult(selectedGame).color === 'red',
-                  'bg-slate-50 border-2 border-slate-200':
-                    getGameResult(selectedGame).color === 'slate',
-                }"
-              >
-                <component
-                  :is="getGameResult(selectedGame).icon"
-                  class="w-6 h-6"
-                  :class="{
-                    'text-green-600': getGameResult(selectedGame).color === 'green',
-                    'text-red-600': getGameResult(selectedGame).color === 'red',
-                    'text-slate-600': getGameResult(selectedGame).color === 'slate',
-                  }"
-                />
-                <span
-                  class="text-xl font-bold"
-                  :class="{
-                    'text-green-700': getGameResult(selectedGame).color === 'green',
-                    'text-red-700': getGameResult(selectedGame).color === 'red',
-                    'text-slate-700': getGameResult(selectedGame).color === 'slate',
-                  }"
-                >
-                  {{ getGameResult(selectedGame).label }}
-                </span>
               </div>
             </div>
           </div>

@@ -113,8 +113,29 @@ class GameController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Game::query()->with(['winner', 'loser', 'player1', 'player2', 'gameMatch']);
+        $user = $request->user();
+        
+        // Build query - players see their own games, admins see all
+        if ($user && $user->type === 'A') {
+            // Admin sees all games
+            $query = Game::query();
+        } elseif ($user) {
+            // Players see only their own games
+            $query = Game::where(function($q) use ($user) {
+                $q->where('player1_user_id', $user->id)
+                  ->orWhere('player2_user_id', $user->id);
+            });
+        } else {
+            // Unauthenticated users cannot view games
+            return response()->json([
+                'error' => 'Authentication required'
+            ], 401);
+        }
 
+        // Include relationships
+        $query->with(['winner', 'loser', 'player1', 'player2', 'gameMatch']);
+
+        // Filtering
         if ($request->has('type') && in_array($request->type, ['3', '9'])) {
             $query->where('type', $request->type);
         }
@@ -165,10 +186,24 @@ class GameController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $game = Game::with(['winner', 'loser', 'player1', 'player2', 'gameMatch'])->findOrFail($id);
-        return response()->json($game);
+        
+        $user = $request->user();
+        
+        // Access control: only participants and admins can view details
+        if ($user && $user->type !== 'A' && 
+            $game->player1_user_id !== $user->id && 
+            $game->player2_user_id !== $user->id) {
+            return response()->json([
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+        
+        return response()->json([
+            'data' => $game
+        ]);
     }
 
     /**

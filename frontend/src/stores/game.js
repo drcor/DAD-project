@@ -48,6 +48,7 @@ export const useGameStore = defineStore('game', () => {
   const hand2 = ref([])
   const played1 = ref(null)
   const played2 = ref(null)
+  const firstPlayerOfTrick = ref(null) // Track who played first in current trick ('player' or 'bot')
   const spoils1 = ref([])
   const spoils2 = ref([])
   const moves = ref(0)
@@ -142,6 +143,7 @@ export const useGameStore = defineStore('game', () => {
     trump.value = {}
     played1.value = {}
     played2.value = {}
+    firstPlayerOfTrick.value = null
     spoils1.value = []
     spoils2.value = []
     moves.value = 0
@@ -219,6 +221,10 @@ export const useGameStore = defineStore('game', () => {
       if (index !== -1) {
         played1.value = hand1.value[index]
         hand1.value.splice(index, 1)
+        // Track if this is the first card of the trick
+        if (!played2.value || Object.keys(played2.value).length === 0) {
+          firstPlayerOfTrick.value = 'player'
+        }
         // mark that player has played; bot will respond when watcher sees currentPlayer==='bot'
         currentPlayer.value = 'bot'
       }
@@ -227,6 +233,10 @@ export const useGameStore = defineStore('game', () => {
       if (index !== -1) {
         played2.value = hand2.value[index]
         hand2.value.splice(index, 1)
+        // Track if this is the first card of the trick
+        if (!played1.value || Object.keys(played1.value).length === 0) {
+          firstPlayerOfTrick.value = 'bot'
+        }
         // If the bot is leading (player hasn't played yet), allow the player to play next
         if (Object.keys(played1.value).length === 0) {
           currentPlayer.value = 'player'
@@ -284,23 +294,25 @@ export const useGameStore = defineStore('game', () => {
 
   /**
    * Check if player1 is the winner of current trick
+   * Uses the same logic as multiplayer mode - first card wins when suits differ and neither is trump
    * @returns {boolean}
    */
   const wins = () => {
     const c1 = played1.value
     const c2 = played2.value
 
-    // Same suit: compare by rank (not points!)
-    if (c1.suit === c2.suit) {
-      return getCardRank(c1) > getCardRank(c2)
-    }
+    // Determine which card was played first
+    const player1PlayedFirst = firstPlayerOfTrick.value === 'player'
+    const firstCard = player1PlayedFirst ? c1 : c2
+    const secondCard = player1PlayedFirst ? c2 : c1
 
-    // Trump logic
-    if (c1.suit === trump.value.suit) return true
-    if (c2.suit === trump.value.suit) return false
+    // Use cardBeats to determine if first card wins
+    const firstCardWins = cardBeats(firstCard, secondCard)
 
-    // First player wins if neither is trump
-    return true
+    // Convert back to whether player1 wins
+    const player1Wins = player1PlayedFirst ? firstCardWins : !firstCardWins
+
+    return player1Wins
   }
 
   const clearPlayedCards = () => {
@@ -352,9 +364,10 @@ export const useGameStore = defineStore('game', () => {
     if (played1.value && played1.value.id != null) spoils1.value.push(played1.value)
     if (played2.value && played2.value.id != null) spoils1.value.push(played2.value)
 
-    // Reset played slots
+    // Reset played slots and first player tracker
     played1.value = {}
     played2.value = {}
+    firstPlayerOfTrick.value = null
 
     // Sanitize spoils array to remove any falsy entries (defensive)
     spoils1.value = spoils1.value.filter(Boolean)
@@ -364,8 +377,10 @@ export const useGameStore = defineStore('game', () => {
     if (played1.value && played1.value.id != null) spoils2.value.push(played1.value)
     if (played2.value && played2.value.id != null) spoils2.value.push(played2.value)
 
+    // Reset played slots and first player tracker
     played1.value = {}
     played2.value = {}
+    firstPlayerOfTrick.value = null
 
     spoils2.value = spoils2.value.filter(Boolean)
   }

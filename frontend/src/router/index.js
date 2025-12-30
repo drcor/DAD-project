@@ -12,6 +12,7 @@ import CoinStore from '@/pages/coin/CoinStore.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import HistoryPage from '@/pages/transactions/HistoryPage.vue'
 import GamesHistoryPage from '@/pages/games/GamesHistoryPage.vue'
+import MatchHistoryPage from '@/pages/matches/MatchHistoryPage.vue'
 import StatisticsPage from '@/pages/statistics/StatisticsPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -66,6 +67,12 @@ const router = createRouter({
       path: '/games',
       name: 'GamesHistory',
       component: GamesHistoryPage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/matches',
+      name: 'MatchHistory',
+      component: MatchHistoryPage,
       meta: { requiresAuth: true }
     },
     {

@@ -107,31 +107,92 @@ class MatchController extends Controller
      */
     public function index(Request $request)
     {
-        $query = GameMatch::with(['player1', 'player2', 'winner']);
-
-        if ($request->has('user_id')) {
-            $userId = $request->user_id;
-            $query->where(function($q) use ($userId) {
-                $q->where('player1_user_id', $userId)
-                  ->orWhere('player2_user_id', $userId);
+        $user = $request->user();
+        
+        // Build query - players see their own matches, admins see all
+        if ($user && $user->type === 'A') {
+            // Admin sees all matches
+            $query = GameMatch::query();
+        } elseif ($user) {
+            // Players see only their own matches
+            $query = GameMatch::where(function($q) use ($user) {
+                $q->where('player1_user_id', $user->id)
+                  ->orWhere('player2_user_id', $user->id);
             });
+        } else {
+            // Unauthenticated users cannot view matches
+            return response()->json([
+                'error' => 'Authentication required'
+            ], 401);
         }
 
-        if ($request->has('status')) {
+        // Include relationships
+        $query->with(['player1', 'player2', 'winner', 'loser']);
+
+        // Filtering
+        if ($request->has('type') && in_array($request->type, ['3', '9'])) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->has('status') && in_array($request->status, ['Pending', 'Playing', 'Ended', 'Interrupted'])) {
             $query->where('status', $request->status);
         }
 
-        $matches = $query->orderBy('began_at', 'desc')->paginate(15);
+        // Sorting
+        $sortField = $request->input('sort_by', 'began_at');
+        $sortDirection = $request->input('sort_direction', 'desc');
 
-        return response()->json($matches);
+        $allowedSortFields = [
+            'began_at',
+            'ended_at',
+            'total_time',
+            'type',
+            'status',
+            'stake'
+        ];
+
+        if (in_array($sortField, $allowedSortFields)) {
+            $query->orderBy($sortField, $sortDirection === 'asc' ? 'asc' : 'desc');
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 15);
+        $matches = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $matches->items(),
+            'meta' => [
+                'current_page' => $matches->currentPage(),
+                'last_page' => $matches->lastPage(),
+                'per_page' => $matches->perPage(),
+                'total' => $matches->total(),
+            ]
+        ]);
     }
 
     /**
      * Display the specified match
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $match = GameMatch::with(['player1', 'player2', 'winner', 'loser', 'games'])->findOrFail($id);
-        return response()->json($match);
+        $match = GameMatch::with(['player1', 'player2', 'winner', 'loser', 'games' => function($query) {
+            $query->with(['player1', 'player2', 'winner', 'loser'])
+                  ->orderBy('began_at', 'asc');
+        }])->findOrFail($id);
+        
+        $user = $request->user();
+        
+        // Access control: only participants and admins can view details
+        if ($user && $user->type !== 'A' && 
+            $match->player1_user_id !== $user->id && 
+            $match->player2_user_id !== $user->id) {
+            return response()->json([
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+        
+        return response()->json([
+            'data' => $match
+        ]);
     }
 }

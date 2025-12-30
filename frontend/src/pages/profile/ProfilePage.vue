@@ -85,6 +85,163 @@
               </div>
             </div>
 
+            <!-- Personal Statistics -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">My Statistics</h3>
+
+              <!-- Loading state for stats -->
+              <div v-if="statsLoading" class="text-center py-8">
+                <p class="text-gray-500">Loading statistics...</p>
+              </div>
+
+              <!-- Stats Content -->
+              <div v-else-if="statistics" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Games Stats -->
+                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-700">Games</h4>
+                    <span class="text-2xl">🎮</span>
+                  </div>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Total Played:</span>
+                      <span class="font-semibold">{{ statistics.games.total_played }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Won:</span>
+                      <span class="font-semibold text-green-600">{{ statistics.games.total_won }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Lost:</span>
+                      <span class="font-semibold text-red-600">{{ statistics.games.total_lost }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Draws:</span>
+                      <span class="font-semibold text-gray-600">{{ statistics.games.total_draws }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Win Rate:</span>
+                      <span class="font-semibold text-blue-600"
+                        >{{ statistics.games.win_rate }}%</span
+                      >
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Matches Stats -->
+                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-700">Matches</h4>
+                    <span class="text-2xl">🏆</span>
+                  </div>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Total Played:</span>
+                      <span class="font-semibold">{{ statistics.matches.total_played }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Won:</span>
+                      <span class="font-semibold text-green-600">{{ statistics.matches.total_won }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Lost:</span>
+                      <span class="font-semibold text-red-600">{{ statistics.matches.total_lost }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Win Rate:</span>
+                      <span class="font-semibold text-blue-600"
+                        >{{ statistics.matches.win_rate }}%</span
+                      >
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Achievements Stats -->
+                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-700">Achievements</h4>
+                    <span class="text-2xl">⭐</span>
+                  </div>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Capotes:</span>
+                      <span class="font-semibold text-orange-600">{{
+                        statistics.achievements.total_capotes
+                      }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Bandeiras:</span>
+                      <span class="font-semibold text-pink-600">{{
+                        statistics.achievements.total_bandeiras
+                      }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Forfeits Received:</span>
+                      <span class="font-semibold text-gray-600">{{
+                        statistics.achievements.forfeits_received
+                      }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-600">Forfeits Given:</span>
+                      <span class="font-semibold text-gray-600">{{
+                        statistics.achievements.forfeits_given
+                      }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- By Variant Stats -->
+                <div class="bg-white rounded-lg p-4 border border-gray-200">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-700">By Variant</h4>
+                    <span class="text-2xl">🃏</span>
+                  </div>
+                  <div class="space-y-3 text-sm">
+                    <div>
+                      <div class="font-medium text-gray-700 mb-1">Bisca 3</div>
+                      <div class="flex justify-between text-xs">
+                        <span class="text-gray-600"
+                          >{{ statistics.by_variant.bisca_3.games_won }}/{{
+                            statistics.by_variant.bisca_3.games_played
+                          }}
+                          won</span
+                        >
+                        <span class="text-gray-600"
+                          >{{ statistics.by_variant.bisca_3.capotes }}C /
+                          {{ statistics.by_variant.bisca_3.bandeiras }}B</span
+                        >
+                      </div>
+                    </div>
+                    <div>
+                      <div class="font-medium text-gray-700 mb-1">Bisca 9</div>
+                      <div class="flex justify-between text-xs">
+                        <span class="text-gray-600"
+                          >{{ statistics.by_variant.bisca_9.games_won }}/{{
+                            statistics.by_variant.bisca_9.games_played
+                          }}
+                          won</span
+                        >
+                        <span class="text-gray-600"
+                          >{{ statistics.by_variant.bisca_9.capotes }}C /
+                          {{ statistics.by_variant.bisca_9.bandeiras }}B</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Load stats button if not loaded -->
+              <div v-else class="text-center">
+                <button
+                  @click="loadStatistics"
+                  class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                >
+                  Load My Statistics
+                </button>
+              </div>
+            </div>
+
             <!-- Profile Information Form -->
             <form @submit.prevent="handleUpdateProfile" class="space-y-6">
               <h3 class="text-lg font-medium text-gray-900">Profile Information</h3>
@@ -263,6 +420,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAPIStore } from '@/stores/api'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
 
 const router = useRouter()
 const apiStore = useAPIStore()
@@ -275,6 +433,10 @@ const updatingPassword = ref(false)
 const deleting = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
+
+// Statistics
+const statistics = ref(null)
+const statsLoading = ref(false)
 
 const formData = ref({
   email: '',
@@ -303,11 +465,26 @@ const loadProfile = async () => {
       nickname: profile.value.nickname,
       name: profile.value.name,
     }
+
+    // Auto-load statistics
+    await loadStatistics()
   } catch (error) {
     console.error('Failed to load profile:', error)
     errorMessage.value = 'Failed to load profile'
   } finally {
     loading.value = false
+  }
+}
+
+const loadStatistics = async () => {
+  try {
+    statsLoading.value = true
+    const response = await axios.get('/api/users/me/statistics')
+    statistics.value = response.data
+  } catch (error) {
+    console.error('Failed to load statistics:', error)
+  } finally {
+    statsLoading.value = false
   }
 }
 
