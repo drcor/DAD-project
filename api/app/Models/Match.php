@@ -4,8 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Match extends Model
+class GameMatch extends Model
 {
+    protected $table = 'matches';
+    
     public $timestamps = false;
 
     protected $fillable = [
@@ -23,7 +25,13 @@ class Match extends Model
         'player2_marks',
         'player1_points',
         'player2_points',
-        'custom'
+        'player1_capotes',
+        'player1_bandeiras',
+        'player2_capotes',
+        'player2_bandeiras',
+        'custom',
+        'stakes_deducted',
+        'payout_awarded',
     ];
 
     protected $casts = [
@@ -35,7 +43,13 @@ class Match extends Model
         'player1_marks' => 'integer',
         'player2_marks' => 'integer',
         'player1_points' => 'integer',
-        'player2_points' => 'integer'
+        'player2_points' => 'integer',
+        'player1_capotes' => 'integer',
+        'player1_bandeiras' => 'integer',
+        'player2_capotes' => 'integer',
+        'player2_bandeiras' => 'integer',
+        'stakes_deducted' => 'boolean',
+        'payout_awarded' => 'boolean',
     ];
 
     // Relationships

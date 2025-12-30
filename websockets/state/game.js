@@ -84,7 +84,7 @@ export const createGame = (user, options = {}) => {
         player2Name: null,
         winner: null,
         currentPlayer: user.id,
-        status: 'waiting', // 'waiting', 'in-progress', 'completed'
+        status: 'waiting', // 'waiting', 'in-progress', 'Ended'
         variant: variant,
         type: type,
         // Cards
@@ -139,6 +139,22 @@ export const dealCards = (gameID) => {
     game.started = true
     game.status = 'in-progress'
     game.beganAt = new Date()
+
+    // Process coin transactions when game starts
+    // Note: We don't await these calls to avoid blocking the game start
+    if (game.isMatch) {
+        // For matches, deduct stake only on the first game
+        if (game.currentGameNumber === 1) {
+            const stake = 3 // Default stake per player
+            apiClient.deductMatchStake(gameID, game.player1, game.player2, stake)
+                .catch(err => console.error(`[dealCards] Failed to deduct match stakes for game ${gameID}:`, err.message))
+        }
+        // Note: No game entry fee for match games - only the match stake
+    } else {
+        // For standalone games, deduct the 2-coin entry fee
+        apiClient.deductGameFee(gameID, game.player1, game.player2)
+            .catch(err => console.error(`[dealCards] Failed to deduct game fees for game ${gameID}:`, err.message))
+    }
 
     return game
 }
@@ -451,7 +467,7 @@ const checkForGameEnd = (game) => {
                     game.matchWinner = 'draw'
                 }
                 game.matchOver = true
-                game.status = 'completed'
+                game.status = 'Ended'
                 console.log(`[checkForGameEnd] Match winner: ${game.matchWinner}`)
             } else {
                 console.log(`[checkForGameEnd] Match continues - setting needsNextGame flag`)
@@ -463,7 +479,7 @@ const checkForGameEnd = (game) => {
         } else {
             console.log(`[checkForGameEnd] Standalone game - marking as complete`)
             game.complete = true
-            game.status = 'completed'
+            game.status = 'Ended'
         }
 
         game.endedAt = new Date()
@@ -550,7 +566,7 @@ export const resignGame = (gameID, playerId) => {
     game.trump = null // Clear trump since it's been awarded
 
     game.complete = true
-    game.status = 'completed'
+    game.status = 'Ended'
     game.endedAt = new Date()
 
     // In a match, award marks to the winner
@@ -839,8 +855,41 @@ export const persistGameToDatabase = async (game, options = {}) => {
             timeout: options.timeout || false
         })
 
+        let dbGameId = null
         if (gameData && gameData.id) {
-            console.log(`[Persistence] Game saved successfully - DB ID: ${gameData.id}`)
+            dbGameId = gameData.id
+            console.log(`[Persistence] Game saved successfully - DB ID: ${dbGameId}`)
+        }
+
+        // Process coin transactions after successful game save
+        if (dbGameId) {
+            // Calculate points for transaction processing
+            const player1Points = computePoints(game.player1Spoils)
+            const player2Points = computePoints(game.player2Spoils)
+
+            // Handle game payouts/refunds
+            if (game.winner === 'draw') {
+                // Refund 1 coin to each player on draw
+                console.log(`[Persistence] Game ${dbGameId} was a draw - processing refunds`)
+                apiClient.refundGameDraw(dbGameId, game.player1, game.player2)
+                    .catch(err => console.error(`[Persistence] Failed to refund draw for game ${dbGameId}:`, err.message))
+            } else if (game.winner) {
+                // Award payout to winner based on points
+                const winnerId = game.winner
+                const winnerPoints = winnerId === game.player1 ? player1Points : player2Points
+
+                console.log(`[Persistence] Game ${dbGameId} won by ${winnerId} with ${winnerPoints} points - processing payout`)
+                apiClient.awardGamePayout(dbGameId, winnerId, winnerPoints)
+                    .catch(err => console.error(`[Persistence] Failed to award payout for game ${dbGameId}:`, err.message))
+            }
+
+            // Handle match payout if match is over
+            if (game.isMatch && game.matchOver && game.matchWinner && game.matchWinner !== 'draw') {
+                const totalStake = 6 // 3 coins from each player
+                console.log(`[Persistence] Match ${game.dbMatchId} over - winner ${game.matchWinner} - processing match payout`)
+                apiClient.awardMatchPayout(game.dbMatchId, game.matchWinner, totalStake)
+                    .catch(err => console.error(`[Persistence] Failed to award match payout for match ${game.dbMatchId}:`, err.message))
+            }
         }
     } catch (error) {
         console.error(`[Persistence] Failed to persist game ${game.id}:`, error.message)

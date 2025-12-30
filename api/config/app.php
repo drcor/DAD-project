@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Internal API Key
+    |--------------------------------------------------------------------------
+    |
+    | This key is used to authenticate internal service requests (e.g., from
+    | the WebSocket server). It should be a secure random string.
+    |
+    */
+
+    'internal_api_key' => env('INTERNAL_API_KEY'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

@@ -17,6 +17,41 @@ class GameController extends Controller
     }
 
     /**
+     * Check if request is authenticated (either user auth or internal API key)
+     * @param Request $request
+     * @return bool
+     * @throws \Exception
+     */
+    private function authenticateRequest(Request $request): bool
+    {
+        // Check for internal API key FIRST (for WebSocket server)
+        $apiKey = $request->header('X-Internal-API-Key');
+        $expectedKey = config('app.internal_api_key');
+        
+        Log::info('[Auth] Checking game persist authentication', [
+            'has_api_key_header' => !empty($apiKey),
+            'has_expected_key' => !empty($expectedKey),
+            'keys_match' => $apiKey === $expectedKey,
+            'has_user_auth' => $request->user() !== null
+        ]);
+        
+        if ($apiKey && $expectedKey && $apiKey === $expectedKey) {
+            Log::info('[Auth] Internal API key authenticated successfully (Game Persist)');
+            return true;
+        }
+
+        // Check for user authentication
+        $user = $request->user();
+        if ($user) {
+            Log::info('[Auth] User authenticated (Game Persist)', ['user_id' => $user->id]);
+            return true;
+        }
+
+        Log::error('[Auth] Authentication failed (Game Persist)');
+        throw new \Exception('Authentication required');
+    }
+
+    /**
      * Persist a game from WebSocket server
      * 
      * POST /api/games/persist
@@ -24,6 +59,9 @@ class GameController extends Controller
     public function persist(Request $request)
     {
         try {
+            // Authenticate request (user or internal API key)
+            $this->authenticateRequest($request);
+
             $validated = $request->validate([
                 'variant' => 'required|in:3,9',
                 'type' => 'required|in:standalone,match',
@@ -73,8 +111,29 @@ class GameController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Game::query()->with(['winner']);
+        $user = $request->user();
+        
+        // Build query - players see their own games, admins see all
+        if ($user && $user->type === 'A') {
+            // Admin sees all games
+            $query = Game::query();
+        } elseif ($user) {
+            // Players see only their own games
+            $query = Game::where(function($q) use ($user) {
+                $q->where('player1_user_id', $user->id)
+                  ->orWhere('player2_user_id', $user->id);
+            });
+        } else {
+            // Unauthenticated users cannot view games
+            return response()->json([
+                'error' => 'Authentication required'
+            ], 401);
+        }
 
+        // Include relationships
+        $query->with(['winner', 'loser', 'player1', 'player2', 'gameMatch']);
+
+        // Filtering
         if ($request->has('type') && in_array($request->type, ['3', '9'])) {
             $query->where('type', $request->type);
         }
@@ -125,9 +184,24 @@ class GameController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Game $game)
+    public function show(Request $request, $id)
     {
-        //
+        $game = Game::with(['winner', 'loser', 'player1', 'player2', 'gameMatch'])->findOrFail($id);
+        
+        $user = $request->user();
+        
+        // Access control: only participants and admins can view details
+        if ($user && $user->type !== 'A' && 
+            $game->player1_user_id !== $user->id && 
+            $game->player2_user_id !== $user->id) {
+            return response()->json([
+                'error' => 'Unauthorized'
+            ], 403);
+        }
+        
+        return response()->json([
+            'data' => $game
+        ]);
     }
 
     /**

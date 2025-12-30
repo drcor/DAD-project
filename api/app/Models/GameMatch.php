@@ -4,32 +4,30 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Game extends Model
+class GameMatch extends Model
 {
+    protected $table = 'matches';
+    
     public $timestamps = false;
 
     protected $fillable = [
         'type',
         'player1_user_id',
         'player2_user_id',
-        'is_draw',
         'winner_user_id',
         'loser_user_id',
-        'match_id',
         'status',
+        'stake',
         'began_at',
         'ended_at',
         'total_time',
+        'player1_marks',
+        'player2_marks',
         'player1_points',
         'player2_points',
-        'is_capote',
-        'is_bandeira',
-        'is_forfeit',
-        'forfeit_reason',
         'custom',
-        'fees_deducted',
+        'stakes_deducted',
         'payout_awarded',
-        'refund_issued',
     ];
 
     protected $casts = [
@@ -37,15 +35,13 @@ class Game extends Model
         'ended_at' => 'datetime',
         'custom' => 'array',
         'total_time' => 'decimal:2',
-        'is_draw' => 'boolean',
-        'is_capote' => 'boolean',
-        'is_bandeira' => 'boolean',
-        'is_forfeit' => 'boolean',
+        'stake' => 'integer',
+        'player1_marks' => 'integer',
+        'player2_marks' => 'integer',
         'player1_points' => 'integer',
         'player2_points' => 'integer',
-        'fees_deducted' => 'boolean',
+        'stakes_deducted' => 'boolean',
         'payout_awarded' => 'boolean',
-        'refund_issued' => 'boolean',
     ];
 
     // Relationships
@@ -69,8 +65,8 @@ class Game extends Model
         return $this->belongsTo(User::class, 'loser_user_id');
     }
 
-    public function gameMatch()
+    public function games()
     {
-        return $this->belongsTo(GameMatch::class, 'match_id');
+        return $this->hasMany(Game::class, 'match_id');
     }
 }

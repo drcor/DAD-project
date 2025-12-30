@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000/api'
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || ''
 
 /**
  * HTTP client for communicating with Laravel API
@@ -11,7 +12,8 @@ class ApiClient {
             baseURL: API_BASE_URL,
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Internal-API-Key': INTERNAL_API_KEY
             }
         })
     }
@@ -24,7 +26,11 @@ class ApiClient {
     async saveGame(gameData) {
         try {
             const payload = this.formatGameData(gameData)
-            const response = await this.client.post('/games/persist', payload)
+            const response = await this.client.post('/games/persist', payload, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
             console.log('[ApiClient] Game saved successfully:', response.data)
             return response.data
         } catch (error) {
@@ -44,11 +50,162 @@ class ApiClient {
     async saveMatch(matchData) {
         try {
             const payload = this.formatMatchData(matchData)
-            const response = await this.client.post('/matches/persist', payload)
+            const response = await this.client.post('/matches/persist', payload, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
             console.log('[ApiClient] Match saved successfully:', response.data)
             return response.data
         } catch (error) {
             console.error('[ApiClient] Failed to save match:', error.message)
+            if (error.response) {
+                console.error('[ApiClient] Error details:', error.response.data)
+            }
+            throw error
+        }
+    }
+
+    /**
+     * Deduct game entry fee from both players (2 coins each)
+     * @param {number} gameId 
+     * @param {number} player1Id 
+     * @param {number} player2Id 
+     * @returns {Promise}
+     */
+    async deductGameFee(gameId, player1Id, player2Id) {
+        try {
+            const response = await this.client.post('/games/transactions/fee', {
+                game_id: gameId,
+                player1_id: player1Id,
+                player2_id: player2Id
+            }, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
+            console.log('[ApiClient] Game fees deducted successfully:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('[ApiClient] Failed to deduct game fees:', error.message)
+            if (error.response) {
+                console.error('[ApiClient] Error details:', error.response.data)
+            }
+            throw error
+        }
+    }
+
+    /**
+     * Award game payout to winner (3/4/6 coins based on points)
+     * @param {number} gameId 
+     * @param {number} winnerId 
+     * @param {number} points 
+     * @returns {Promise}
+     */
+    async awardGamePayout(gameId, winnerId, points) {
+        try {
+            const response = await this.client.post('/games/transactions/payout', {
+                game_id: gameId,
+                winner_id: winnerId,
+                points: points
+            }, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
+            console.log('[ApiClient] Game payout awarded successfully:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('[ApiClient] Failed to award game payout:', error.message)
+            if (error.response) {
+                console.error('[ApiClient] Error details:', error.response.data)
+            }
+            throw error
+        }
+    }
+
+    /**
+     * Refund game fees on draw (1 coin each player)
+     * @param {number} gameId 
+     * @param {number} player1Id 
+     * @param {number} player2Id 
+     * @returns {Promise}
+     */
+    async refundGameDraw(gameId, player1Id, player2Id) {
+        try {
+            const response = await this.client.post('/games/transactions/refund', {
+                game_id: gameId,
+                player1_id: player1Id,
+                player2_id: player2Id
+            }, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
+            console.log('[ApiClient] Game draw refunded successfully:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('[ApiClient] Failed to refund game draw:', error.message)
+            if (error.response) {
+                console.error('[ApiClient] Error details:', error.response.data)
+            }
+            throw error
+        }
+    }
+
+    /**
+     * Deduct match stake from both players (3-100 coins each)
+     * @param {number} matchId 
+     * @param {number} player1Id 
+     * @param {number} player2Id 
+     * @param {number} stake 
+     * @returns {Promise}
+     */
+    async deductMatchStake(matchId, player1Id, player2Id, stake) {
+        try {
+            const response = await this.client.post('/matches/transactions/stake', {
+                match_id: matchId,
+                player1_id: player1Id,
+                player2_id: player2Id,
+                stake: stake
+            }, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
+            console.log('[ApiClient] Match stakes deducted successfully:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('[ApiClient] Failed to deduct match stakes:', error.message)
+            if (error.response) {
+                console.error('[ApiClient] Error details:', error.response.data)
+            }
+            throw error
+        }
+    }
+
+    /**
+     * Award match payout to winner (total stake - 1 coin commission)
+     * @param {number} matchId 
+     * @param {number} winnerId 
+     * @param {number} totalStake 
+     * @returns {Promise}
+     */
+    async awardMatchPayout(matchId, winnerId, totalStake) {
+        try {
+            const response = await this.client.post('/matches/transactions/payout', {
+                match_id: matchId,
+                winner_id: winnerId,
+                total_stake: totalStake
+            }, {
+                headers: {
+                    'X-Internal-API-Key': INTERNAL_API_KEY
+                }
+            })
+            console.log('[ApiClient] Match payout awarded successfully:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('[ApiClient] Failed to award match payout:', error.message)
             if (error.response) {
                 console.error('[ApiClient] Error details:', error.response.data)
             }

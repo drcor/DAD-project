@@ -4,11 +4,21 @@
       <!-- Play Game Link -->
       <NavigationMenuItem>
         <NavigationMenuLink>
-          <RouterLink to="/game/setup" class="font-medium">🎮 Play</RouterLink>
+          <RouterLink to="/game/setup" custom v-slot="{ href, navigate, isActive }">
+            <a
+              :href="href"
+              @click="navigate"
+              :class="[
+                'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+                isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+              ]"
+              >🎮 Play
+            </a>
+          </RouterLink>
         </NavigationMenuLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem v-if="userLoggedIn">
+      <NavigationMenuItem>
         <RouterLink to="/statistics" custom v-slot="{ href, navigate, isActive }">
           <a
             :href="href"
@@ -34,6 +44,21 @@
             ]"
           >
             🎮 Game History
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
+
+      <NavigationMenuItem v-if="userLoggedIn">
+        <RouterLink to="/matches" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            🏅 Match History
           </a>
         </RouterLink>
       </NavigationMenuItem>
@@ -132,9 +157,14 @@
 import {
   NavigationMenu,
   NavigationMenuItem,
-  NavigationMenuList,
   NavigationMenuLink,
+  NavigationMenuList,
 } from '@/components/ui/navigation-menu'
+import { useAuthStore } from '@/stores/auth'
+import { computed } from 'vue'
+
+const authStore = useAuthStore()
+const currentUser = computed(() => authStore.currentUser)
 
 const emits = defineEmits(['logout'])
 

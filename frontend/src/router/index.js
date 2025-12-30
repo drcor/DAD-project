@@ -4,13 +4,16 @@ import LobbyPage from '@/pages/game/LobbyPage.vue'
 import MultiPlayerPage from '@/pages/game/MultiPlayerPage.vue'
 import HomePage from '@/pages/home/HomePage.vue'
 import LoginPage from '@/pages/login/LoginPage.vue'
+import RegisterPage from '@/pages/auth/RegisterPage.vue'
+import ProfilePage from '@/pages/profile/ProfilePage.vue'
 import LaravelPage from '@/pages/testing/LaravelPage.vue'
 import WebsocketsPage from '@/pages/testing/WebsocketsPage.vue'
-import CoinStore from '@/pages/Coin/CoinStore.vue'
+import CoinStore from '@/pages/coin/CoinStore.vue'
 import { createRouter, createWebHistory } from 'vue-router'
-import HistoryPage from '@/pages/Transactions/HistoryPage.vue'
-import GamesHistoryPage from '@/pages/Games/GamesHistoryPage.vue'
-import StatisticsPage from '@/pages/Statistics/StatisticsPage.vue'
+import HistoryPage from '@/pages/transactions/HistoryPage.vue'
+import GamesHistoryPage from '@/pages/games/GamesHistoryPage.vue'
+import MatchHistoryPage from '@/pages/matches/MatchHistoryPage.vue'
+import StatisticsPage from '@/pages/statistics/StatisticsPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -23,6 +26,17 @@ const router = createRouter({
     {
       path: '/login',
       component: LoginPage,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/register',
+      component: RegisterPage,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/profile',
+      component: ProfilePage,
+      meta: { requiresAuth: true },
     },
     {
       path: '/testing',
@@ -56,10 +70,16 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/matches',
+      name: 'MatchHistory',
+      component: MatchHistoryPage,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/statistics',
       name: 'Statistics',
       component: StatisticsPage,
-      meta: { requiresAuth: true }
+      // No requiresAuth - statistics/leaderboards should be public
     },
     {
       path: '/game',
@@ -87,18 +107,25 @@ const router = createRouter({
   ],
 })
 
-// Navigation guard to enforce authentication
-router.beforeEach((to, from, next) => {
+// Navigation guards
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
-  // Check if route requires authentication
-  if (to.meta.requiresAuth && !authStore.currentUser) {
-    // Redirect to login page if not authenticated
-    next({ path: '/login', query: { redirect: to.fullPath } })
+  // Try to restore session if not already logged in
+  if (!authStore.isLoggedIn) {
+    await authStore.restoreSession()
+  }
+
+  if (to.meta.requiresAuth && !authStore.isLoggedIn) {
+    // Redirect to login if authentication is required
+    next('/login')
+  } else if (to.meta.guestOnly && authStore.isLoggedIn) {
+    // Redirect to home if already logged in
+    next('/')
   } else {
-    // Allow navigation
     next()
   }
 })
 
 export default router
+

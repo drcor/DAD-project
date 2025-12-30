@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Game;
-use App\Models\Match as MatchModel;
+use App\Models\GameMatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -32,14 +32,41 @@ class GamePersistenceService
             $isDraw = $gameData['player1Points'] === $gameData['player2Points'];
             $winnerId = null;
             $loserId = null;
+            $winnerPoints = 0;
 
             if (!$isDraw) {
                 if ($gameData['player1Points'] > $gameData['player2Points']) {
                     $winnerId = $gameData['player1'];
                     $loserId = $gameData['player2'];
+                    $winnerPoints = $gameData['player1Points'];
                 } else {
                     $winnerId = $gameData['player2'];
                     $loserId = $gameData['player1'];
+                    $winnerPoints = $gameData['player2Points'];
+                }
+            }
+
+            // Determine achievement flags
+            $isCapote = false;
+            $isBandeira = false;
+            
+            if (!$isDraw && $winnerPoints >= 91) {
+                $isCapote = true;
+            }
+            
+            if (!$isDraw && $winnerPoints === 120) {
+                $isBandeira = true;
+            }
+
+            // Determine forfeit status
+            $isForfeit = ($gameData['resigned'] ?? false) || ($gameData['timeout'] ?? false);
+            $forfeitReason = null;
+            
+            if ($isForfeit) {
+                if ($gameData['resigned'] ?? false) {
+                    $forfeitReason = 'resignation';
+                } elseif ($gameData['timeout'] ?? false) {
+                    $forfeitReason = 'timeout';
                 }
             }
 
@@ -58,6 +85,10 @@ class GamePersistenceService
                 'total_time' => $totalTime,
                 'player1_points' => $gameData['player1Points'],
                 'player2_points' => $gameData['player2Points'],
+                'is_capote' => $isCapote,
+                'is_bandeira' => $isBandeira,
+                'is_forfeit' => $isForfeit,
+                'forfeit_reason' => $forfeitReason,
                 'custom' => [
                     'moves' => $gameData['moves'] ?? 0,
                     'game_type' => $gameData['type'] ?? 'standalone',
@@ -91,7 +122,7 @@ class GamePersistenceService
      * Save or update a match to the database
      * 
      * @param array $matchData Match data from WebSocket server
-     * @return MatchModel|null
+     * @return GameMatch|null
      */
     public function saveMatch(array $matchData)
     {
@@ -120,7 +151,34 @@ class GamePersistenceService
             // Check if match already exists in DB
             $match = null;
             if (isset($matchData['dbMatchId'])) {
-                $match = MatchModel::find($matchData['dbMatchId']);
+                $match = GameMatch::find($matchData['dbMatchId']);
+            }
+
+            // Calculate capotes and bandeiras from match games
+            $player1Capotes = 0;
+            $player1Bandeiras = 0;
+            $player2Capotes = 0;
+            $player2Bandeiras = 0;
+
+            if ($match) {
+                // Count achievements from all games in this match
+                $games = Game::where('match_id', $match->id)->get();
+                
+                foreach ($games as $game) {
+                    if ($game->winner_user_id === $matchData['player1']) {
+                        if ($game->is_bandeira) {
+                            $player1Bandeiras++;
+                        } elseif ($game->is_capote) {
+                            $player1Capotes++;
+                        }
+                    } elseif ($game->winner_user_id === $matchData['player2']) {
+                        if ($game->is_bandeira) {
+                            $player2Bandeiras++;
+                        } elseif ($game->is_capote) {
+                            $player2Capotes++;
+                        }
+                    }
+                }
             }
 
             $matchDbData = [
@@ -138,6 +196,10 @@ class GamePersistenceService
                 'player2_marks' => $matchData['player2Marks'] ?? 0,
                 'player1_points' => $matchData['player1TotalPoints'] ?? 0,
                 'player2_points' => $matchData['player2TotalPoints'] ?? 0,
+                'player1_capotes' => $player1Capotes,
+                'player1_bandeiras' => $player1Bandeiras,
+                'player2_capotes' => $player2Capotes,
+                'player2_bandeiras' => $player2Bandeiras,
                 'custom' => [
                     'current_game_number' => $matchData['currentGameNumber'] ?? 1,
                     'websocket_match_id' => $matchData['matchId'] ?? null
@@ -149,7 +211,7 @@ class GamePersistenceService
                 $match->update($matchDbData);
             } else {
                 // Create new match
-                $match = MatchModel::create($matchDbData);
+                $match = GameMatch::create($matchDbData);
             }
 
             DB::commit();
