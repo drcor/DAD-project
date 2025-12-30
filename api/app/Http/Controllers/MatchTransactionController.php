@@ -160,7 +160,7 @@ class MatchTransactionController extends Controller
             }
 
             // Verify match is completed
-            if ($match->status !== 'completed') {
+            if ($match->status !== 'Ended') {
                 throw new \Exception('Match is not completed');
             }
 

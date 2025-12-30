@@ -263,7 +263,7 @@ class GameTransactionController extends Controller
             }
 
             // Verify game is completed
-            if ($game->status !== 'completed') {
+            if ($game->status !== 'Ended') {
                 throw new \Exception('Game is not completed');
             }
 

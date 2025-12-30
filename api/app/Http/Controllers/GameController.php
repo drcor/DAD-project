@@ -30,11 +30,9 @@ class GameController extends Controller
         
         Log::info('[Auth] Checking game persist authentication', [
             'has_api_key_header' => !empty($apiKey),
-            'api_key_length' => $apiKey ? strlen($apiKey) : 0,
             'has_expected_key' => !empty($expectedKey),
-            'expected_key_length' => $expectedKey ? strlen($expectedKey) : 0,
             'keys_match' => $apiKey === $expectedKey,
-            'all_headers' => $request->headers->all()
+            'has_user_auth' => $request->user() !== null
         ]);
         
         if ($apiKey && $expectedKey && $apiKey === $expectedKey) {

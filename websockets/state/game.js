@@ -84,7 +84,7 @@ export const createGame = (user, options = {}) => {
         player2Name: null,
         winner: null,
         currentPlayer: user.id,
-        status: 'waiting', // 'waiting', 'in-progress', 'completed'
+        status: 'waiting', // 'waiting', 'in-progress', 'Ended'
         variant: variant,
         type: type,
         // Cards
@@ -467,7 +467,7 @@ const checkForGameEnd = (game) => {
                     game.matchWinner = 'draw'
                 }
                 game.matchOver = true
-                game.status = 'completed'
+                game.status = 'Ended'
                 console.log(`[checkForGameEnd] Match winner: ${game.matchWinner}`)
             } else {
                 console.log(`[checkForGameEnd] Match continues - setting needsNextGame flag`)
@@ -479,7 +479,7 @@ const checkForGameEnd = (game) => {
         } else {
             console.log(`[checkForGameEnd] Standalone game - marking as complete`)
             game.complete = true
-            game.status = 'completed'
+            game.status = 'Ended'
         }
 
         game.endedAt = new Date()
@@ -566,7 +566,7 @@ export const resignGame = (gameID, playerId) => {
     game.trump = null // Clear trump since it's been awarded
 
     game.complete = true
-    game.status = 'completed'
+    game.status = 'Ended'
     game.endedAt = new Date()
 
     // In a match, award marks to the winner
