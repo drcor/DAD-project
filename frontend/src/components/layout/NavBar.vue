@@ -1,8 +1,8 @@
 <template>
   <NavigationMenu>
     <NavigationMenuList class="justify-around gap-4">
-      <!-- Play Game Link -->
-      <NavigationMenuItem>
+      <!-- Play Game Link - Only for Players -->
+      <NavigationMenuItem v-if="!isAdmin">
         <NavigationMenuLink>
           <RouterLink to="/game/setup" custom v-slot="{ href, navigate, isActive }">
             <a
@@ -33,7 +33,7 @@
         </RouterLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem v-if="userLoggedIn">
+      <NavigationMenuItem v-if="userLoggedIn && !isAdmin">
         <RouterLink to="/games" custom v-slot="{ href, navigate, isActive }">
           <a
             :href="href"
@@ -48,7 +48,7 @@
         </RouterLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem v-if="userLoggedIn">
+      <NavigationMenuItem v-if="userLoggedIn && !isAdmin">
         <RouterLink to="/matches" custom v-slot="{ href, navigate, isActive }">
           <a
             :href="href"
@@ -63,7 +63,7 @@
         </RouterLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem v-if="userLoggedIn">
+      <NavigationMenuItem v-if="userLoggedIn && !isAdmin">
         <RouterLink to="/store" custom v-slot="{ href, navigate, isActive }">
           <a
             :href="href"
@@ -78,7 +78,7 @@
         </RouterLink>
       </NavigationMenuItem>
 
-      <NavigationMenuItem v-if="userLoggedIn">
+      <NavigationMenuItem v-if="userLoggedIn && !isAdmin">
         <RouterLink to="/transactions" custom v-slot="{ href, navigate, isActive }">
           <a
             :href="href"
@@ -93,14 +93,97 @@
         </RouterLink>
       </NavigationMenuItem>
 
+      <!-- Admin-specific navigation -->
+      <NavigationMenuItem v-if="userLoggedIn && isAdmin">
+        <RouterLink to="/admin/users" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            👥 Users
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
+
+      <NavigationMenuItem v-if="userLoggedIn && isAdmin">
+        <RouterLink to="/games" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            🎮 Games
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
+
+      <NavigationMenuItem v-if="userLoggedIn && isAdmin">
+        <RouterLink to="/matches" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            🏅 Matches
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
+
+      <NavigationMenuItem v-if="userLoggedIn && isAdmin">
+        <RouterLink to="/admin/transactions" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            💳 Transactions
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
+
+      <NavigationMenuItem v-if="userLoggedIn && isAdmin">
+        <RouterLink to="/admin/statistics" custom v-slot="{ href, navigate, isActive }">
+          <a
+            :href="href"
+            @click="navigate"
+            :class="[
+              'group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-100 focus:bg-slate-100 focus:outline-none',
+              isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-500',
+            ]"
+          >
+            📊 Platform Stats
+          </a>
+        </RouterLink>
+      </NavigationMenuItem>
+
       <!-- User Logged In -->
       <template v-if="userLoggedIn">
-        <!-- Coin Balance -->
-        <NavigationMenuItem>
+        <!-- Coin Balance - Only for Players -->
+        <NavigationMenuItem v-if="!isAdmin">
           <div class="flex items-center px-3 py-1 bg-yellow-50 border border-yellow-200 rounded-md">
             <span class="text-sm font-semibold text-yellow-700">
               {{ currentUser?.coins_balance || 0 }} 🪙
             </span>
+          </div>
+        </NavigationMenuItem>
+
+        <!-- Admin Badge -->
+        <NavigationMenuItem v-if="isAdmin">
+          <div class="flex items-center px-3 py-1 bg-purple-50 border border-purple-200 rounded-md">
+            <span class="text-sm font-semibold text-purple-700"> 👑 Admin </span>
           </div>
         </NavigationMenuItem>
 
@@ -165,6 +248,7 @@ import { computed } from 'vue'
 
 const authStore = useAuthStore()
 const currentUser = computed(() => authStore.currentUser)
+const isAdmin = computed(() => authStore.currentUser?.type === 'A')
 
 const emits = defineEmits(['logout'])
 

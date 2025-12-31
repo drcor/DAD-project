@@ -57,22 +57,45 @@ class MatchTransactionController extends Controller
             $user = $request->user(); // May be null for internal API calls
 
             $validated = $request->validate([
-                'match_id' => 'required|integer|exists:matches,id',
+                'match_id' => 'required|integer', // Match might not exist in DB yet (websocket matches)
                 'player1_id' => 'required|integer|exists:users,id',
                 'player2_id' => 'required|integer|exists:users,id',
                 'stake' => 'required|integer|min:3|max:100',
             ]);
 
-            $match = GameMatch::findOrFail($validated['match_id']);
+            $matchId = $validated['match_id'];
             $player1 = User::findOrFail($validated['player1_id']);
             $player2 = User::findOrFail($validated['player2_id']);
-            $matchId = $validated['match_id'];
             $stake = $validated['stake'];
 
-            // Verify player IDs match match
-            if ($match->player1_user_id !== $player1->id || 
-                $match->player2_user_id !== $player2->id) {
-                throw new \Exception('Player IDs do not match match participants');
+            // Try to load match if it exists in the database
+            // For WebSocket matches, the match_id might be an in-memory ID that doesn't exist in DB yet
+            // or might accidentally collide with an existing DB match ID
+            $match = GameMatch::find($matchId);
+
+            // If match exists AND has matching players, enforce server-side consistency
+            // If match exists but players DON'T match, it's a WebSocket ID collision - ignore the DB match
+            if ($match) {
+                $playersMatch = (
+                    $match->player1_user_id === $player1->id &&
+                    $match->player2_user_id === $player2->id
+                );
+
+                if ($playersMatch) {
+                    // This is the actual match - enforce validation
+                    if ($match->stakes_deducted) {
+                        throw new \Exception('Stakes already deducted for this match');
+                    }
+
+                    // Verify stake matches server-side agreement (if stored)
+                    if (isset($match->stake) && $match->stake !== $stake) {
+                        throw new \Exception('Stake does not match agreed amount');
+                    }
+                } else {
+                    // Players don't match - this is a WebSocket ID collision, not the real match
+                    // Treat it as if the match doesn't exist yet
+                    $match = null;
+                }
             }
 
             // Verify requesting user is a participant (skip for internal API calls)
@@ -80,23 +103,15 @@ class MatchTransactionController extends Controller
                 throw new \Exception('You are not a participant of this match');
             }
 
-            // Prevent replay
-            if ($match->stakes_deducted) {
-                throw new \Exception('Stakes already deducted for this match');
-            }
-
-            // Verify stake matches server-side agreement (if stored)
-            if (isset($match->stake) && $match->stake !== $stake) {
-                throw new \Exception('Stake does not match agreed amount');
-            }
-
             // Deduct stake from both players
             $transaction1 = $this->transactionService->deductMatchStake($player1, $stake, $matchId);
             $transaction2 = $this->transactionService->deductMatchStake($player2, $stake, $matchId);
 
-            // Mark stakes as deducted
-            $match->stakes_deducted = true;
-            $match->save();
+            // Mark stakes as deducted (if match exists)
+            if ($match) {
+                $match->stakes_deducted = true;
+                $match->save();
+            }
 
             Log::info('Match stakes deducted', [
                 'match_id' => $matchId,

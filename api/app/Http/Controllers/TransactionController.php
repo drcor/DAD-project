@@ -24,6 +24,15 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        // Administrators cannot purchase coins
+        if ($user->isAdmin()) {
+            return response()->json([
+                'message' => 'Administrators cannot purchase coins.',
+            ], 403);
+        }
+
         // 1. Validation
         $validated = $request->validate([
             'type' => 'required|in:MBWAY,PAYPAL,IBAN,MB,VISA',

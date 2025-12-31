@@ -64,7 +64,7 @@ class GameTransactionController extends Controller
 
             // Common validation for both endpoints
             $validated = $request->validate([
-                'game_id' => 'required|integer|exists:games,id',
+                'game_id' => 'required|integer', // Game might not exist in DB yet (websocket games)
                 'player1_id' => 'required|integer|exists:users,id',
                 'player2_id' => 'required|integer|exists:users,id',
             ]);
@@ -73,15 +73,29 @@ class GameTransactionController extends Controller
             $player2 = User::findOrFail($validated['player2_id']);
             $gameId = $validated['game_id'];
 
-            // Load game and enforce server-side consistency
-            $game = Game::findOrFail($gameId);
+            // Try to load game if it exists in the database
+            // For WebSocket games, the game_id might be an in-memory ID that doesn't exist in DB yet
+            // or might accidentally collide with an existing DB game ID
+            $game = Game::find($gameId);
 
-            // Ensure the supplied player IDs match the actual game participants
-            if (
-                ($game->player1_user_id ?? null) !== $player1->id ||
-                ($game->player2_user_id ?? null) !== $player2->id
-            ) {
-                throw new \Exception('Player IDs do not match the game participants');
+            // If game exists AND has matching players, enforce server-side consistency
+            // If game exists but players DON'T match, it's a WebSocket ID collision - ignore the DB game
+            if ($game) {
+                $playersMatch = (
+                    ($game->player1_user_id ?? null) === $player1->id &&
+                    ($game->player2_user_id ?? null) === $player2->id
+                );
+
+                if ($playersMatch) {
+                    // This is the actual game - check if fees already deducted
+                    if (!empty($game->fees_deducted)) {
+                        throw new \Exception('Game fees have already been deducted for this game');
+                    }
+                } else {
+                    // Players don't match - this is a WebSocket ID collision, not the real game
+                    // Treat it as if the game doesn't exist yet
+                    $game = null;
+                }
             }
 
             // Ensure the acting user is one of the participants (prevents arbitrary callers)
@@ -90,19 +104,15 @@ class GameTransactionController extends Controller
                 throw new \Exception('You are not a participant of this game');
             }
 
-            // Prevent double deduction: require a server-side flag/column on Game
-            // (adjust property name to match your schema; common names: fees_deducted / fee_taken)
-            if (!empty($game->fees_deducted)) {
-                throw new \Exception('Game fees have already been deducted for this game');
-            }
-
             // Deduct fee from both players (service should also be idempotent/verify)
             $transaction1 = $this->transactionService->deductGameFee($player1, $gameId);
             $transaction2 = $this->transactionService->deductGameFee($player2, $gameId);
 
-            // Mark fees as deducted on the game to prevent replay
-            $game->fees_deducted = true;
-            $game->save();
+            // Mark fees as deducted on the game to prevent replay (if game exists)
+            if ($game) {
+                $game->fees_deducted = true;
+                $game->save();
+            }
 
             Log::info('Game fees deducted', [
                 'game_id' => $gameId,

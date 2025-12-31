@@ -14,6 +14,9 @@ import HistoryPage from '@/pages/transactions/HistoryPage.vue'
 import GamesHistoryPage from '@/pages/games/GamesHistoryPage.vue'
 import MatchHistoryPage from '@/pages/matches/MatchHistoryPage.vue'
 import StatisticsPage from '@/pages/statistics/StatisticsPage.vue'
+import UsersPage from '@/pages/admin/UsersPage.vue'
+import AdminTransactionsPage from '@/pages/admin/AdminTransactionsPage.vue'
+import PlatformStatsPage from '@/pages/admin/PlatformStatsPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -55,13 +58,13 @@ const router = createRouter({
       path: '/store',
       name: 'store',
       component: CoinStore,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresPlayer: true }
     },
     {
       path: '/transactions',
       name: 'TransactionHistory',
       component: HistoryPage,
-      meta: { requiresAuth: true } // Garante que só utilizadores logados acedem
+      meta: { requiresAuth: true, requiresPlayer: true }
     },
     {
       path: '/games',
@@ -86,7 +89,8 @@ const router = createRouter({
       children: [
         {
           path: 'setup',
-          component: GameSetupPage
+          component: GameSetupPage,
+          meta: { requiresAuth: true, requiresPlayer: true }
         },
         {
           path: 'singleplayer',
@@ -95,12 +99,33 @@ const router = createRouter({
         {
           path: 'lobby',
           component: LobbyPage,
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: true, requiresPlayer: true }
         },
         {
           path: 'multiplayer/:id',
           component: MultiPlayerPage,
-          meta: { requiresAuth: true }
+          meta: { requiresAuth: true, requiresPlayer: true }
+        }
+      ]
+    },
+    {
+      path: '/admin',
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [
+        {
+          path: 'users',
+          name: 'AdminUsers',
+          component: UsersPage,
+        },
+        {
+          path: 'transactions',
+          name: 'AdminTransactions',
+          component: AdminTransactionsPage,
+        },
+        {
+          path: 'statistics',
+          name: 'AdminStatistics',
+          component: PlatformStatsPage,
         }
       ]
     }
@@ -116,15 +141,39 @@ router.beforeEach(async (to, from, next) => {
     await authStore.restoreSession()
   }
 
+  // Check if route requires authentication
   if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     // Redirect to login if authentication is required
     next('/login')
-  } else if (to.meta.guestOnly && authStore.isLoggedIn) {
+    return
+  }
+
+  // Check if route is for guests only
+  if (to.meta.guestOnly && authStore.isLoggedIn) {
     // Redirect to home if already logged in
     next('/')
-  } else {
-    next()
+    return
   }
+
+  // Check if route requires admin access
+  if (to.meta.requiresAdmin) {
+    if (authStore.currentUser?.type !== 'A') {
+      // Redirect non-admins to home
+      next('/')
+      return
+    }
+  }
+
+  // Check if route requires player access (not admin)
+  if (to.meta.requiresPlayer) {
+    if (authStore.currentUser?.type === 'A') {
+      // Redirect admins to admin dashboard
+      next('/admin/users')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

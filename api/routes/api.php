@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\GameTransactionController;
 use App\Http\Controllers\MatchTransactionController;
+use App\Http\Controllers\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\StatisticsController;
@@ -61,4 +62,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // Match routes with auth
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/matches/{id}', [MatchController::class, 'show']);
+    
+    // Admin routes - Only accessible by administrators
+    Route::prefix('admin')->group(function () {
+        Route::get('/users', [AdminController::class, 'getAllUsers']);
+        Route::get('/users/{userId}', [AdminController::class, 'getUser']);
+        Route::post('/users', [AdminController::class, 'createAdmin']);
+        Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
+        Route::patch('/users/{userId}/block', [AdminController::class, 'blockUser']);
+        Route::patch('/users/{userId}/unblock', [AdminController::class, 'unblockUser']);
+        
+        Route::get('/transactions', [AdminController::class, 'getAllTransactions']);
+        Route::get('/users/{userId}/transactions', [AdminController::class, 'getUserTransactions']);
+        
+        Route::get('/statistics', [AdminController::class, 'getPlatformStatistics']);
+    });
 });

@@ -80,6 +80,12 @@ export const handleGameEvents = (io, socket) => {
                 return
             }
 
+            // Administrators cannot create games
+            if (user.type === 'A') {
+                socket.emit('error', { message: 'Administrators cannot play games' })
+                return
+            }
+
             const game = createGame(user, options)
             socket.join(`game-${game.id}`)
 
@@ -159,6 +165,12 @@ export const handleGameEvents = (io, socket) => {
 
             if (!user) {
                 socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            // Administrators cannot join games
+            if (user.type === 'A') {
+                socket.emit('error', { message: 'Administrators cannot play games' })
                 return
             }
 
