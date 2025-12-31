@@ -35,7 +35,7 @@ class AdminController extends Controller
             return $error;
         }
 
-        $query = User::query();
+        $query = User::withTrashed();
 
         // Optional filters
         if ($request->has('type')) {
@@ -59,8 +59,37 @@ class AdminController extends Controller
         $perPage = $request->input('per_page', 15);
         $users = $query->orderBy('nickname')->paginate($perPage);
 
+        // Enhance user data with statistics for admin view
+        $enhancedUsers = $users->getCollection()->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'nickname' => $user->nickname,
+                'type' => $user->type,
+                'blocked' => $user->blocked,
+                'coins_balance' => $user->coins_balance,
+                'photo_avatar_filename' => $user->photo_avatar_filename,
+                'photo_url' => $user->photo_url,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+                'deleted_at' => $user->deleted_at,
+                // Statistics
+                'statistics' => [
+                    'total_games' => $user->gamesAsPlayer1()->count() + $user->gamesAsPlayer2()->count(),
+                    'total_matches' => $user->matchesAsPlayer1()->count() + $user->matchesAsPlayer2()->count(),
+                    'total_transactions' => $user->transactions()->count(),
+                    'games_won' => $user->gamesWon()->count(),
+                    'matches_won' => Game::where('winner_user_id', $user->id)
+                        ->distinct('match_id')
+                        ->whereNotNull('match_id')
+                        ->count(),
+                ],
+            ];
+        });
+
         return response()->json([
-            'data' => $users->items(),
+            'data' => $enhancedUsers,
             'meta' => [
                 'current_page' => $users->currentPage(),
                 'last_page' => $users->lastPage(),
@@ -71,7 +100,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Get a specific user's details
+     * Get a specific user's details with comprehensive statistics
      */
     public function getUser($userId)
     {
@@ -87,7 +116,48 @@ class AdminController extends Controller
             ], 404);
         }
 
-        return response()->json($user);
+        // Get comprehensive user statistics for admin view
+        $userData = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'nickname' => $user->nickname,
+            'type' => $user->type,
+            'blocked' => $user->blocked,
+            'coins_balance' => $user->coins_balance,
+            'photo_avatar_filename' => $user->photo_avatar_filename,
+            'photo_url' => $user->photo_url,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'deleted_at' => $user->deleted_at,
+            'custom' => $user->custom,
+            
+            // Detailed statistics
+            'statistics' => [
+                'games' => [
+                    'total' => $user->gamesAsPlayer1()->count() + $user->gamesAsPlayer2()->count(),
+                    'as_player1' => $user->gamesAsPlayer1()->count(),
+                    'as_player2' => $user->gamesAsPlayer2()->count(),
+                    'won' => $user->gamesWon()->count(),
+                    'lost' => $user->gamesLost()->count(),
+                ],
+                'matches' => [
+                    'total' => $user->matchesAsPlayer1()->count() + $user->matchesAsPlayer2()->count(),
+                    'as_player1' => $user->matchesAsPlayer1()->count(),
+                    'as_player2' => $user->matchesAsPlayer2()->count(),
+                    'won' => $user->matchesWon()->count(),
+                    'lost' => $user->matchesLost()->count(),
+                ],
+                'transactions' => [
+                    'total_count' => $user->transactions()->count(),
+                    'total_coins_earned' => $user->transactions()->where('coins', '>', 0)->sum('coins'),
+                    'total_coins_spent' => abs($user->transactions()->where('coins', '<', 0)->sum('coins')),
+                    'last_transaction' => $user->transactions()->orderBy('transaction_datetime', 'desc')->first(),
+                ],
+            ],
+        ];
+
+        return response()->json($userData);
     }
 
     /**

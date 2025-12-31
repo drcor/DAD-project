@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Calendar,
+  TrendingUp,
+  Info,
 } from 'lucide-vue-next'
 
 const adminStore = useAdminStore()
@@ -268,6 +271,13 @@ const getPageNumbers = () => {
               <th class="px-6 py-4 text-left">Type</th>
               <th class="px-6 py-4 text-left">Status</th>
               <th class="px-6 py-4 text-left">Coins</th>
+              <th class="px-6 py-4 text-left">Activity</th>
+              <th class="px-6 py-4 text-left">
+                <div class="flex items-center gap-1">
+                  <Calendar :size="14" />
+                  Joined
+                </div>
+              </th>
               <th class="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -313,22 +323,75 @@ const getPageNumbers = () => {
 
               <!-- Status -->
               <td class="px-6 py-4">
-                <Badge
-                  v-if="user.blocked"
-                  variant="destructive"
-                  class="bg-red-50 text-red-700 border-red-200"
-                >
-                  <Ban class="w-3 h-3 mr-1" />
-                  Blocked
-                </Badge>
-                <Badge v-else class="bg-green-50 text-green-700 border-green-200">
-                  <CheckCircle class="w-3 h-3 mr-1" />
-                  Active
-                </Badge>
+                <div class="space-y-1">
+                  <Badge
+                    v-if="user.deleted_at"
+                    variant="destructive"
+                    class="bg-slate-100 text-slate-600 border-slate-300"
+                  >
+                    Deleted
+                  </Badge>
+                  <Badge
+                    v-else-if="user.blocked"
+                    variant="destructive"
+                    class="bg-red-50 text-red-700 border-red-200"
+                  >
+                    <Ban class="w-3 h-3 mr-1" />
+                    Blocked
+                  </Badge>
+                  <Badge v-else class="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle class="w-3 h-3 mr-1" />
+                    Active
+                  </Badge>
+                </div>
               </td>
 
               <!-- Coins -->
               <td class="px-6 py-4 text-slate-600">{{ user.coins_balance }} 🪙</td>
+
+              <!-- Activity Statistics -->
+              <td class="px-6 py-4">
+                <div v-if="user.statistics" class="text-xs space-y-1">
+                  <div
+                    class="flex items-center gap-1 text-slate-600"
+                    :title="`${user.statistics.total_games} games played`"
+                  >
+                    <TrendingUp :size="12" class="text-blue-500" />
+                    <span>{{ user.statistics.total_games }} games</span>
+                  </div>
+                  <div
+                    class="flex items-center gap-1 text-slate-600"
+                    :title="`${user.statistics.total_matches} matches played`"
+                  >
+                    <TrendingUp :size="12" class="text-purple-500" />
+                    <span>{{ user.statistics.total_matches }} matches</span>
+                  </div>
+                  <div
+                    v-if="user.statistics.total_transactions > 0"
+                    class="flex items-center gap-1 text-slate-600"
+                    :title="`${user.statistics.total_transactions} transactions`"
+                  >
+                    <Info :size="12" class="text-green-500" />
+                    <span>{{ user.statistics.total_transactions }} txns</span>
+                  </div>
+                </div>
+                <div v-else class="text-xs text-slate-400">No activity</div>
+              </td>
+
+              <!-- Joined Date -->
+              <td class="px-6 py-4">
+                <div class="text-xs text-slate-600">
+                  {{ new Date(user.created_at).toLocaleDateString() }}
+                </div>
+                <div class="text-xs text-slate-400">
+                  {{
+                    new Date(user.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  }}
+                </div>
+              </td>
 
               <!-- Actions -->
               <td class="px-6 py-4">
@@ -367,7 +430,7 @@ const getPageNumbers = () => {
             </tr>
 
             <tr v-if="adminStore.users.length === 0">
-              <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+              <td colspan="8" class="px-6 py-12 text-center text-slate-500">
                 <Users class="w-8 h-8 opacity-20 mx-auto mb-2" />
                 <p>No users found.</p>
               </td>
