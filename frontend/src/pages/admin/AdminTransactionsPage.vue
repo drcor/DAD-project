@@ -11,15 +11,35 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Search,
+  X,
 } from 'lucide-vue-next'
 
 const adminStore = useAdminStore()
 
 const selectedUserId = ref(null)
+const searchQuery = ref('')
+const isDropdownOpen = ref(false)
+const searchInputRef = ref(null)
+
+// Click outside directive
+const vClickOutside = {
+  mounted(el, binding) {
+    el.__clickOutsideHandler__ = (event) => {
+      if (!el.contains(event.target)) {
+        binding.value(event)
+      }
+    }
+    document.addEventListener('click', el.__clickOutsideHandler__)
+  },
+  beforeUnmount(el) {
+    document.removeEventListener('click', el.__clickOutsideHandler__)
+  },
+}
 
 const displayedUserName = computed(() => {
   if (selectedUserId.value && adminStore.selectedUser) {
-    return `${adminStore.selectedUser.nickname} (${adminStore.selectedUser.name})`
+    return `${adminStore.selectedUser.nickname || ''} (${adminStore.selectedUser.name})`
   }
   return 'All Users'
 })
@@ -31,20 +51,73 @@ const currentBalance = computed(() => {
   return null
 })
 
+// Filtered users based on search query
+const filteredUsers = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return adminStore.users
+  }
+
+  const query = searchQuery.value.toLowerCase()
+  return adminStore.users.filter((user) => {
+    const nickname = (user.nickname || '').toLowerCase()
+    const name = (user.name || '').toLowerCase()
+    const email = (user.email || '').toLowerCase()
+    const type = user.type === 'A' ? 'admin' : 'player'
+
+    return (
+      nickname.includes(query) ||
+      name.includes(query) ||
+      email.includes(query) ||
+      type.includes(query)
+    )
+  })
+})
+
+const selectedUserDisplay = computed(() => {
+  if (!selectedUserId.value) return ''
+  const user = adminStore.users.find((u) => u.id === selectedUserId.value)
+  if (!user) return ''
+  return `${user.nickname || ''} (${user.name})`
+})
+
 onMounted(async () => {
   await adminStore.fetchAllUsers(1, 1000) // Get all users for dropdown
   adminStore.fetchAllTransactions()
 })
 
-const handleUserChange = (event) => {
-  const userId = event.target.value
-  selectedUserId.value = userId || null
+const selectUser = (userId) => {
+  selectedUserId.value = userId
+  searchQuery.value = ''
+  isDropdownOpen.value = false
 
   if (!userId) {
     adminStore.fetchAllTransactions(1, adminStore.pagination.perPage)
   } else {
     adminStore.fetchUserTransactions(userId, 1, adminStore.pagination.perPage)
   }
+}
+
+const clearSelection = () => {
+  selectUser(null)
+}
+
+const toggleDropdown = () => {
+  isDropdownOpen.value = !isDropdownOpen.value
+  if (isDropdownOpen.value) {
+    setTimeout(() => {
+      searchInputRef.value?.focus()
+    }, 50)
+  }
+}
+
+const closeDropdown = () => {
+  isDropdownOpen.value = false
+  searchQuery.value = ''
+}
+
+// Close dropdown when clicking outside
+const handleClickOutside = () => {
+  closeDropdown()
 }
 
 // Pagination
@@ -126,19 +199,108 @@ const formatDate = (dateStr) => {
         </div>
 
         <div class="flex flex-col sm:flex-row gap-3">
-          <!-- User Filter -->
-          <div class="flex items-center gap-2 flex-1">
-            <Users class="w-4 h-4 text-slate-500" />
-            <select
-              :value="selectedUserId || ''"
-              @change="handleUserChange"
-              class="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm font-medium text-slate-700 hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+          <!-- User Search/Filter -->
+          <div class="flex-1 user-search-dropdown relative" @click.stop>
+            <div class="flex items-center gap-2">
+              <Users class="w-4 h-4 text-slate-500 flex-shrink-0" />
+
+              <!-- Search Button / Selected User Display -->
+              <button
+                @click="toggleDropdown"
+                class="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm font-medium text-left hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all flex items-center justify-between gap-2"
+                :class="{ 'border-blue-500 ring-2 ring-blue-200': isDropdownOpen }"
+              >
+                <span v-if="!selectedUserId" class="text-slate-500">
+                  <Search class="w-4 h-4 inline mr-1.5" />
+                  Search users...
+                </span>
+                <span v-else class="text-slate-900 truncate">
+                  {{ selectedUserDisplay }}
+                </span>
+                <X
+                  v-if="selectedUserId"
+                  @click.stop="clearSelection"
+                  class="w-4 h-4 text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+                />
+              </button>
+            </div>
+
+            <!-- Dropdown -->
+            <div
+              v-if="isDropdownOpen"
+              v-click-outside="handleClickOutside"
+              class="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-80 overflow-hidden"
             >
-              <option value="">All Users</option>
-              <option v-for="user in adminStore.users" :key="user.id" :value="user.id">
-                {{ user.nickname }} ({{ user.name }}) - {{ user.type === 'A' ? 'Admin' : 'Player' }}
-              </option>
-            </select>
+              <!-- Search Input -->
+              <div class="p-2 border-b border-slate-200 sticky top-0 bg-white">
+                <div class="relative">
+                  <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    ref="searchInputRef"
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Search by nickname, name, or email..."
+                    class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                  />
+                </div>
+              </div>
+
+              <!-- User List -->
+              <div class="overflow-y-auto max-h-60">
+                <!-- All Users Option -->
+                <button
+                  @click="selectUser(null)"
+                  class="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors flex items-center justify-between"
+                  :class="{ 'bg-blue-100 font-semibold': !selectedUserId }"
+                >
+                  <span class="text-sm">All Users</span>
+                  <Badge variant="outline" class="text-xs"
+                    >{{ adminStore.pagination.total || 0 }} total</Badge
+                  >
+                </button>
+
+                <!-- Filtered Users -->
+                <button
+                  v-for="user in filteredUsers"
+                  :key="user.id"
+                  @click="selectUser(user.id)"
+                  class="w-full px-3 py-2.5 text-left hover:bg-blue-50 transition-colors border-t border-slate-100"
+                  :class="{ 'bg-blue-100 font-semibold': selectedUserId === user.id }"
+                >
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-sm text-slate-900 truncate">
+                          {{ user.nickname }}
+                        </span>
+                        <Badge
+                          :variant="user.type === 'A' ? 'default' : 'secondary'"
+                          class="text-xs flex-shrink-0"
+                        >
+                          {{ user.type === 'A' ? 'Admin' : 'Player' }}
+                        </Badge>
+                      </div>
+                      <div class="text-xs text-slate-500 truncate">{{ user.name }}</div>
+                      <div class="text-xs text-slate-400 truncate">{{ user.email }}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <div class="text-xs font-semibold text-slate-700">
+                        {{ user.coins_balance }} 🪙
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                <!-- No Results -->
+                <div
+                  v-if="filteredUsers.length === 0"
+                  class="px-3 py-6 text-center text-sm text-slate-500"
+                >
+                  <AlertCircle class="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                  No users found matching "{{ searchQuery }}"
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- User Info -->
@@ -203,11 +365,19 @@ const formatDate = (dateStr) => {
 
               <td v-if="!selectedUserId" class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <div
-                    class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white flex items-center justify-center text-xs font-bold"
+                  <span v-if="t.user?.photo_url" class="w-6 h-6 rounded-full overflow-hidden">
+                    <img
+                      :src="t.user.photo_url"
+                      alt="Profile"
+                      class="w-full h-full object-cover"
+                    />
+                  </span>
+                  <span
+                    v-else
+                    class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"
                   >
                     {{ t.user?.nickname?.[0]?.toUpperCase() || 'U' }}
-                  </div>
+                  </span>
                   <div>
                     <div class="font-medium text-slate-900">
                       {{ t.user?.nickname || 'Unknown' }}
@@ -321,14 +491,6 @@ const formatDate = (dateStr) => {
             <ChevronRight class="w-4 h-4" />
           </button>
         </div>
-      </div>
-
-      <!-- Read-only Notice -->
-      <div class="bg-blue-50 border-t border-blue-200 px-6 py-3">
-        <p class="text-sm text-blue-800 text-center">
-          ℹ️ <strong>Read-only view:</strong> Administrators can view transaction history but cannot
-          create, modify, or delete transactions.
-        </p>
       </div>
     </div>
   </div>

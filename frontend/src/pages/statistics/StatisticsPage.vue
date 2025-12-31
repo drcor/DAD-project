@@ -81,7 +81,21 @@ const getRankColor = (index) => {
 
                   <div class="flex-1">
                     <div class="font-bold text-slate-800 text-lg">{{ player.nickname }}</div>
-                    <div class="text-xs text-slate-400">ID: #{{ player.id }}</div>
+                    <div class="flex items-center mt-1">
+                      <span v-if="player?.photo_url" class="w-6 h-6 rounded-full overflow-hidden">
+                        <img
+                          :src="player.photo_url"
+                          alt="Avatar"
+                          class="w-full h-full object-cover"
+                        />
+                      </span>
+                      <span
+                        v-else
+                        class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"
+                      >
+                        {{ player?.nickname?.[0]?.toUpperCase() || 'U' }}
+                      </span>
+                    </div>
                   </div>
 
                   <div class="text-right">
@@ -128,7 +142,21 @@ const getRankColor = (index) => {
 
                   <div class="flex-1">
                     <div class="font-bold text-slate-800 text-lg">{{ player.nickname }}</div>
-                    <div class="text-xs text-slate-400">ID: #{{ player.id }}</div>
+                    <div class="flex items-center mt-1">
+                      <span v-if="player?.photo_url" class="w-6 h-6 rounded-full overflow-hidden">
+                        <img
+                          :src="player.photo_url"
+                          alt="Avatar"
+                          class="w-full h-full object-cover"
+                        />
+                      </span>
+                      <span
+                        v-else
+                        class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"
+                      >
+                        {{ player?.nickname?.[0]?.toUpperCase() || 'U' }}
+                      </span>
+                    </div>
                   </div>
 
                   <div class="text-right">
@@ -174,6 +202,16 @@ const getRankColor = (index) => {
                     <span v-else-if="index === 2">🥉</span>
                     <span v-else>{{ index + 1 }}</span>
                   </div>
+
+                  <span v-if="player?.photo_url" class="w-6 h-6 rounded-full overflow-hidden">
+                    <img :src="player.photo_url" alt="Avatar" class="w-full h-full object-cover" />
+                  </span>
+                  <span
+                    v-else
+                    class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"
+                  >
+                    {{ player?.nickname?.[0]?.toUpperCase() || 'U' }}
+                  </span>
 
                   <div class="flex-1 min-w-0">
                     <div class="font-bold text-slate-800 truncate">{{ player.nickname }}</div>
@@ -222,6 +260,15 @@ const getRankColor = (index) => {
                     <span v-else>{{ index + 1 }}</span>
                   </div>
 
+                  <span v-if="player?.photo_url" class="w-6 h-6 rounded-full overflow-hidden">
+                    <img :src="player.photo_url" alt="Avatar" class="w-full h-full object-cover" />
+                  </span>
+                  <span
+                    v-else
+                    class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"
+                  >
+                    {{ player?.nickname?.[0]?.toUpperCase() || 'U' }}
+                  </span>
                   <div class="flex-1 min-w-0">
                     <div class="font-bold text-slate-800 truncate">{{ player.nickname }}</div>
                   </div>
@@ -268,6 +315,16 @@ const getRankColor = (index) => {
                     <span v-else-if="index === 2">🥉</span>
                     <span v-else>{{ index + 1 }}</span>
                   </div>
+
+                  <span v-if="player?.photo_url" class="w-6 h-6 rounded-full overflow-hidden">
+                    <img :src="player.photo_url" alt="Avatar" class="w-full h-full object-cover" />
+                  </span>
+                  <span
+                    v-else
+                    class="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold"
+                  >
+                    {{ player?.nickname?.[0]?.toUpperCase() || 'U' }}
+                  </span>
 
                   <div class="flex-1 min-w-0">
                     <div class="font-bold text-slate-800 truncate">{{ player.nickname }}</div>

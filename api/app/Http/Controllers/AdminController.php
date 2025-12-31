@@ -237,7 +237,7 @@ class AdminController extends Controller
             return $error;
         }
 
-        $query = CoinTransaction::with(['type', 'user:id,nickname,name,email']);
+        $query = CoinTransaction::with(['type', 'user:id,nickname,name,email,photo_avatar_filename']);
 
         // Optional user filter
         if ($request->has('user_id')) {
