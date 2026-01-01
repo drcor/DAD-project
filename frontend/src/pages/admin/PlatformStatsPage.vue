@@ -1,6 +1,9 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useAdminStore } from '@/stores/admin'
+import LineChart from '@/components/charts/LineChart.vue'
+import PieChart from '@/components/charts/PieChart.vue'
+import DateRangeFilter from '@/components/DateRangeFilter.vue'
 import {
   Loader2,
   TrendingUp,
@@ -13,14 +16,168 @@ import {
   Coins,
   Activity,
   BarChart3,
+  Target,
+  DollarSign,
 } from 'lucide-vue-next'
 
 const adminStore = useAdminStore()
+const timelineData = ref(null)
+const loadingTimeline = ref(true)
+const selectedDays = ref(30)
+const engagementMetrics = ref(null)
+const gamePerformanceMetrics = ref(null)
+const economyMetrics = ref(null)
+const transactionTypeData = ref(null)
+const recentActivity = ref(null)
 
-onMounted(() => {
+onMounted(async () => {
   adminStore.fetchStatistics()
+  await fetchAllData()
 })
 
+const fetchAllData = async () => {
+  await Promise.all([
+    fetchTimelineData(),
+    fetchEngagementMetrics(),
+    fetchGamePerformanceMetrics(),
+    fetchEconomyMetrics(),
+    fetchTransactionTypeData(),
+    fetchRecentActivity(),
+  ])
+}
+
+const handleDateChange = async (filterData) => {
+  selectedDays.value = filterData.days
+  await fetchAllData()
+}
+
+const fetchTimelineData = async () => {
+  try {
+    loadingTimeline.value = true
+    const token = sessionStorage.getItem('authToken')
+
+    const response = await fetch(`/api/admin/statistics/timeline?days=${selectedDays.value}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      timelineData.value = data
+    } else {
+      const errorText = await response.text()
+      console.error('Failed to fetch timeline data:', response.status, errorText)
+    }
+  } catch (error) {
+    console.error('Failed to fetch timeline data:', error)
+  } finally {
+    loadingTimeline.value = false
+  }
+}
+
+const fetchEngagementMetrics = async () => {
+  try {
+    const token = sessionStorage.getItem('authToken')
+    const response = await fetch(`/api/admin/statistics/engagement?days=${selectedDays.value}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    })
+    if (response.ok) {
+      engagementMetrics.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Failed to fetch engagement metrics:', error)
+  }
+}
+
+const fetchGamePerformanceMetrics = async () => {
+  try {
+    const token = sessionStorage.getItem('authToken')
+    const response = await fetch(
+      `/api/admin/statistics/game-performance?days=${selectedDays.value}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      },
+    )
+    if (response.ok) {
+      gamePerformanceMetrics.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Failed to fetch game performance metrics:', error)
+  }
+}
+
+const fetchEconomyMetrics = async () => {
+  try {
+    const token = sessionStorage.getItem('authToken')
+    const response = await fetch(`/api/admin/statistics/economy?days=${selectedDays.value}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    })
+    if (response.ok) {
+      economyMetrics.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Failed to fetch economy metrics:', error)
+  }
+}
+
+const fetchTransactionTypeData = async () => {
+  try {
+    const token = sessionStorage.getItem('authToken')
+    const response = await fetch(
+      `/api/admin/statistics/transactions/by-type?days=${selectedDays.value}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      },
+    )
+    if (response.ok) {
+      transactionTypeData.value = await response.json()
+    }
+  } catch (error) {
+    console.error('Failed to fetch transaction type data:', error)
+  }
+}
+
+const fetchRecentActivity = async () => {
+  try {
+    const token = sessionStorage.getItem('authToken')
+    // Fetch recent transactions, games, users
+    const [transactionsRes, gamesRes, usersRes] = await Promise.all([
+      fetch('/api/admin/transactions?limit=10', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      }),
+      fetch('/api/games?limit=10', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      }),
+      fetch('/api/admin/users?limit=10&sort=created_at&order=desc', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      }),
+    ])
+
+    recentActivity.value = {
+      transactions: transactionsRes.ok ? await transactionsRes.json() : [],
+      games: gamesRes.ok ? await gamesRes.json() : [],
+      users: usersRes.ok ? await usersRes.json() : [],
+    }
+  } catch (error) {
+    console.error('Failed to fetch recent activity:', error)
+    recentActivity.value = { transactions: [], games: [], users: [] }
+  }
+}
 const formatNumber = (num) => {
   return new Intl.NumberFormat('en-US').format(num || 0)
 }
@@ -36,6 +193,140 @@ const getPercentage = (part, total) => {
   if (!total) return 0
   return ((part / total) * 100).toFixed(1)
 }
+
+// Dynamic date range text for chart titles
+const dateRangeText = computed(() => {
+  if (selectedDays.value === 1) return 'Last 24 Hours'
+  if (selectedDays.value === 7) return 'Last 7 Days'
+  if (selectedDays.value === 30) return 'Last 30 Days'
+  if (selectedDays.value === 90) return 'Last 90 Days'
+  if (selectedDays.value === 365) return 'Last Year'
+  return `Last ${selectedDays.value} Days`
+})
+
+// Chart data preparations
+const userGrowthChartData = computed(() => {
+  if (!timelineData.value) return null
+  return {
+    labels: timelineData.value.user_registrations.map((d) => d.date),
+    datasets: [
+      {
+        label: 'New Users',
+        data: timelineData.value.user_registrations.map((d) => d.count),
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  }
+})
+
+const activityTimelineChartData = computed(() => {
+  if (!timelineData.value) return null
+  return {
+    labels: timelineData.value.games_played.map((d) => d.date),
+    datasets: [
+      {
+        label: 'Games',
+        data: timelineData.value.games_played.map((d) => d.count),
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: true,
+        tension: 0.4,
+      },
+      {
+        label: 'Matches',
+        data: timelineData.value.matches_played.map((d) => d.count),
+        borderColor: 'rgb(245, 158, 11)',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  }
+})
+
+const transactionVolumeChartData = computed(() => {
+  if (!timelineData.value) return null
+  return {
+    labels: timelineData.value.transactions.map((d) => d.date),
+    datasets: [
+      {
+        label: 'Transactions',
+        data: timelineData.value.transactions.map((d) => d.count),
+        borderColor: 'rgb(139, 92, 246)',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  }
+})
+
+const coinEconomyChartData = computed(() => {
+  if (!adminStore.statistics) return null
+  return {
+    labels: ['In Circulation', 'Total Transacted'],
+    datasets: [
+      {
+        data: [
+          adminStore.statistics.economy.total_coins_in_circulation,
+          adminStore.statistics.transactions.total_coins,
+        ],
+        backgroundColor: ['rgba(234, 179, 8, 0.8)', 'rgba(139, 92, 246, 0.8)'],
+        borderColor: ['rgb(234, 179, 8)', 'rgb(139, 92, 246)'],
+        borderWidth: 2,
+      },
+    ],
+  }
+})
+
+const transactionTypeChartData = computed(() => {
+  if (!transactionTypeData.value) return null
+  const types = transactionTypeData.value.transactions_by_type || []
+  return {
+    labels: types.map((t) => t.type_name),
+    datasets: [
+      {
+        data: types.map((t) => t.count),
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(251, 146, 60, 0.8)',
+          'rgba(168, 85, 247, 0.8)',
+          'rgba(236, 72, 153, 0.8)',
+        ],
+        borderColor: [
+          'rgb(34, 197, 94)',
+          'rgb(59, 130, 246)',
+          'rgb(239, 68, 68)',
+          'rgb(251, 146, 60)',
+          'rgb(168, 85, 247)',
+          'rgb(236, 72, 153)',
+        ],
+        borderWidth: 2,
+      },
+    ],
+  }
+})
+
+const gameTypeChartData = computed(() => {
+  if (!gamePerformanceMetrics.value) return null
+  const types = gamePerformanceMetrics.value.game_type_stats || []
+  return {
+    labels: types.map((t) => (t.type === '3' ? 'Bisca 3' : 'Bisca 9')),
+    datasets: [
+      {
+        data: types.map((t) => t.count),
+        backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(245, 158, 11, 0.8)'],
+        borderColor: ['rgb(16, 185, 129)', 'rgb(245, 158, 11)'],
+        borderWidth: 2,
+      },
+    ],
+  }
+})
 </script>
 
 <template>
@@ -52,6 +343,12 @@ const getPercentage = (part, total) => {
         </p>
       </div>
 
+      <!-- Date Range Filter -->
+      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+        <h4 class="font-semibold text-lg mb-4">📅 Date Range Filter</h4>
+        <DateRangeFilter v-model="selectedDays" @change="handleDateChange" />
+      </div>
+
       <!-- Loading State -->
       <div
         v-if="adminStore.loading"
@@ -63,6 +360,343 @@ const getPercentage = (part, total) => {
 
       <!-- Statistics Content -->
       <template v-else-if="adminStore.statistics">
+        <!-- Charts Section -->
+        <div v-if="!loadingTimeline && timelineData" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- User Growth Chart -->
+          <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+            <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Users class="w-5 h-5 text-blue-600" />
+              User Growth ({{ dateRangeText }})
+            </h4>
+            <LineChart
+              v-if="userGrowthChartData"
+              chart-id="user-growth-chart"
+              :data="userGrowthChartData"
+            />
+          </div>
+
+          <!-- Activity Timeline Chart -->
+          <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+            <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Activity class="w-5 h-5 text-green-600" />
+              Activity Timeline ({{ dateRangeText }})
+            </h4>
+            <LineChart
+              v-if="activityTimelineChartData"
+              chart-id="activity-timeline-chart"
+              :data="activityTimelineChartData"
+            />
+          </div>
+
+          <!-- Transaction Volume Chart -->
+          <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+            <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Activity class="w-5 h-5 text-purple-600" />
+              Transaction Volume ({{ dateRangeText }})
+            </h4>
+            <LineChart
+              v-if="transactionVolumeChartData"
+              chart-id="transaction-volume-chart"
+              :data="transactionVolumeChartData"
+            />
+          </div>
+
+          <!-- Coin Economy Distribution -->
+          <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+            <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Coins class="w-5 h-5 text-yellow-600" />
+              Coin Economy Distribution
+            </h4>
+            <PieChart
+              v-if="coinEconomyChartData"
+              chart-id="coin-economy-chart"
+              :data="coinEconomyChartData"
+            />
+          </div>
+
+          <!-- Transaction Types Distribution -->
+          <div
+            v-if="transactionTypeData"
+            class="bg-white rounded-xl shadow-lg border border-slate-200 p-6"
+          >
+            <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+              <DollarSign class="w-5 h-5 text-purple-600" />
+              Transaction Types Distribution
+            </h4>
+            <PieChart
+              v-if="transactionTypeChartData"
+              chart-id="transaction-types-chart"
+              :data="transactionTypeChartData"
+            />
+          </div>
+
+          <!-- Game Types Popularity -->
+          <div
+            v-if="gamePerformanceMetrics"
+            class="bg-white rounded-xl shadow-lg border border-slate-200 p-6"
+          >
+            <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Gamepad2 class="w-5 h-5 text-green-600" />
+              Game Types Popularity
+            </h4>
+            <PieChart
+              v-if="gameTypeChartData"
+              chart-id="game-types-chart"
+              :data="gameTypeChartData"
+            />
+          </div>
+        </div>
+
+        <!-- Engagement Metrics -->
+        <div
+          v-if="engagementMetrics"
+          class="bg-white rounded-xl shadow-lg border border-slate-200 p-6"
+        >
+          <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <Target class="w-5 h-5 text-blue-600" />
+            User Engagement Metrics
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+              class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200"
+            >
+              <div class="text-2xl font-bold text-blue-900">
+                {{ engagementMetrics.dau }}
+              </div>
+              <div class="text-sm text-blue-700">Daily Active Users</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200"
+            >
+              <div class="text-2xl font-bold text-green-900">
+                {{ engagementMetrics.wau }}
+              </div>
+              <div class="text-sm text-green-700">Weekly Active Users</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200"
+            >
+              <div class="text-2xl font-bold text-purple-900">
+                {{ engagementMetrics.mau }}
+              </div>
+              <div class="text-sm text-purple-700">Monthly Active Users</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200"
+            >
+              <div class="text-2xl font-bold text-orange-900">
+                {{ formatDecimal(engagementMetrics.average_games_per_user) }}
+              </div>
+              <div class="text-sm text-orange-700">Avg Games per User</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-4 border border-pink-200"
+            >
+              <div class="text-2xl font-bold text-pink-900">
+                {{ formatDecimal(engagementMetrics.average_matches_per_user) }}
+              </div>
+              <div class="text-sm text-pink-700">Avg Matches per User</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200"
+            >
+              <div class="text-2xl font-bold text-indigo-900">
+                {{ formatDecimal(engagementMetrics.retention_rate) }}%
+              </div>
+              <div class="text-sm text-indigo-700">Retention Rate</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Game Performance Metrics -->
+        <div
+          v-if="gamePerformanceMetrics"
+          class="bg-white rounded-xl shadow-lg border border-slate-200 p-6"
+        >
+          <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <Trophy class="w-5 h-5 text-yellow-600" />
+            Game Performance Metrics
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div
+              class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200"
+            >
+              <div class="text-2xl font-bold text-yellow-900">
+                {{ formatDecimal(gamePerformanceMetrics.average_game_duration) }}s
+              </div>
+              <div class="text-sm text-yellow-700">Avg Game Duration</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200"
+            >
+              <div class="text-2xl font-bold text-red-900">
+                {{ formatDecimal(gamePerformanceMetrics.capote_frequency) }}%
+              </div>
+              <div class="text-sm text-red-700">Capote Frequency</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200"
+            >
+              <div class="text-2xl font-bold text-blue-900">
+                {{ formatDecimal(gamePerformanceMetrics.bandeira_frequency) }}%
+              </div>
+              <div class="text-sm text-blue-700">Bandeira Frequency</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200"
+            >
+              <div class="text-2xl font-bold text-green-900">
+                {{ gamePerformanceMetrics.total_capotes + gamePerformanceMetrics.total_bandeiras }}
+              </div>
+              <div class="text-sm text-green-700">Total Special Victories</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Economy Metrics -->
+        <div
+          v-if="economyMetrics"
+          class="bg-white rounded-xl shadow-lg border border-slate-200 p-6"
+        >
+          <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <Coins class="w-5 h-5 text-yellow-600" />
+            Economy Metrics
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div
+              class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200"
+            >
+              <div class="text-2xl font-bold text-yellow-900">
+                {{ formatDecimal(economyMetrics.coin_velocity) }}
+              </div>
+              <div class="text-sm text-yellow-700">Coin Velocity (tx/user)</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200"
+            >
+              <div class="text-2xl font-bold text-green-900">
+                {{ formatNumber(economyMetrics.total_earned) }}
+              </div>
+              <div class="text-sm text-green-700">Total Coins Earned</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200"
+            >
+              <div class="text-2xl font-bold text-red-900">
+                {{ formatNumber(economyMetrics.total_spent) }}
+              </div>
+              <div class="text-sm text-red-700">Total Coins Spent</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200"
+            >
+              <div class="text-2xl font-bold text-purple-900">
+                {{ formatDecimal(economyMetrics.spending_earning_ratio) }}%
+              </div>
+              <div class="text-sm text-purple-700">Spending/Earning Ratio</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200"
+            >
+              <div class="text-2xl font-bold text-blue-900">
+                {{ formatNumber(economyMetrics.wealth_distribution.p50) }}
+              </div>
+              <div class="text-sm text-blue-700">Median Balance</div>
+            </div>
+            <div
+              class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200"
+            >
+              <div class="text-2xl font-bold text-indigo-900">
+                {{ formatNumber(economyMetrics.wealth_distribution.max) }}
+              </div>
+              <div class="text-sm text-indigo-700">Highest Balance</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div
+          v-if="recentActivity"
+          class="bg-white rounded-xl shadow-lg border border-slate-200 p-6"
+        >
+          <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">
+            <Activity class="w-5 h-5 text-purple-600" />
+            Recent Activity
+          </h4>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Recent Registrations -->
+            <div>
+              <h5 class="font-medium text-sm text-gray-700 mb-2">📝 Recent Registrations</h5>
+              <div class="space-y-2">
+                <div
+                  v-for="user in recentActivity.users.data?.slice(0, 5) || []"
+                  :key="user.id"
+                  class="text-sm bg-gray-50 p-2 rounded"
+                >
+                  <div class="font-medium">{{ user.nickname || user.name }}</div>
+                  <div class="text-xs text-gray-500">
+                    {{ new Date(user.created_at).toLocaleDateString() }}
+                  </div>
+                </div>
+                <p v-if="!recentActivity.users.data?.length" class="text-sm text-gray-400">
+                  No recent users
+                </p>
+              </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div>
+              <h5 class="font-medium text-sm text-gray-700 mb-2">💰 Recent Transactions</h5>
+              <div class="space-y-2">
+                <div
+                  v-for="tx in recentActivity.transactions.data?.slice(0, 5) || []"
+                  :key="tx.id"
+                  class="text-sm bg-gray-50 p-2 rounded"
+                >
+                  <div class="font-medium">
+                    <span :class="tx.coins > 0 ? 'text-green-600' : 'text-red-600'">
+                      {{ tx.coins > 0 ? '+' : '' }}{{ tx.coins }} coins
+                    </span>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ tx.transaction_type?.name || 'Unknown' }}
+                  </div>
+                </div>
+                <p v-if="!recentActivity.transactions.data?.length" class="text-sm text-gray-400">
+                  No recent transactions
+                </p>
+              </div>
+            </div>
+
+            <!-- Recent Games -->
+            <div>
+              <h5 class="font-medium text-sm text-gray-700 mb-2">🎮 Recent Games</h5>
+              <div class="space-y-2">
+                <div
+                  v-for="game in recentActivity.games.data?.slice(0, 5) || []"
+                  :key="game.id"
+                  class="text-sm bg-gray-50 p-2 rounded"
+                >
+                  <div class="font-medium">Bisca {{ game.type }}</div>
+                  <div class="text-xs text-gray-500">
+                    Status:
+                    {{
+                      game.status === 'E'
+                        ? 'Ended'
+                        : game.status === 'PE'
+                          ? 'Playing'
+                          : 'Interrupted'
+                    }}
+                  </div>
+                </div>
+                <p v-if="!recentActivity.games.data?.length" class="text-sm text-gray-400">
+                  No recent games
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- User Statistics -->
         <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
           <h4 class="font-semibold text-lg mb-4 flex items-center gap-2">

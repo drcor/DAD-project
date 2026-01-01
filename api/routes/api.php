@@ -31,6 +31,7 @@ Route::post('/matches/transactions/payout', [MatchTransactionController::class, 
 
 // Public statistics/leaderboards (no auth required - anyone can view)
 Route::get('/statistics', [StatisticsController::class, 'index']);
+Route::get('/statistics/timeline', [StatisticsController::class, 'timeline']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -76,5 +77,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/users/{userId}/transactions', [AdminController::class, 'getUserTransactions']);
         
         Route::get('/statistics', [AdminController::class, 'getPlatformStatistics']);
+        Route::get('/statistics/timeline', [AdminController::class, 'getTimeline']);
+        Route::get('/statistics/transactions/by-period', [AdminController::class, 'getTransactionsByPeriod']);
+        Route::get('/statistics/transactions/by-user', [AdminController::class, 'getTransactionsByUser']);
+        Route::get('/statistics/transactions/by-type', [AdminController::class, 'getTransactionTypeBreakdown']);
+        Route::get('/statistics/games/by-period', [AdminController::class, 'getGamesByPeriod']);
+        Route::get('/statistics/matches/by-period', [AdminController::class, 'getMatchesByPeriod']);
+        Route::get('/statistics/users/registrations-by-period', [AdminController::class, 'getUserRegistrationsByPeriod']);
+        Route::get('/statistics/engagement', [AdminController::class, 'getEngagementMetrics']);
+        Route::get('/statistics/game-performance', [AdminController::class, 'getGamePerformanceMetrics']);
+        Route::get('/statistics/economy', [AdminController::class, 'getEconomyMetrics']);
     });
 });

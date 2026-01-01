@@ -61,4 +61,25 @@ class StatisticsController extends Controller
             'top_bandeiras' => $topBandeiras,
         ]);
     }
+
+    /**
+     * Get public activity timeline for charts (no auth required - anonymized data)
+     */
+    public function timeline(Request $request)
+    {
+        $days = $request->input('days', 30);
+        $startDate = now()->subDays($days)->startOfDay();
+
+        // Games played timeline (public data) - use began_at instead of created_at
+        $gamesTimeline = Game::selectRaw("DATE(began_at) as date, COUNT(*) as count")
+            ->where('began_at', '>=', $startDate)
+            ->whereNotNull('began_at')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return response()->json([
+            'games_played' => $gamesTimeline,
+        ]);
+    }
 }
