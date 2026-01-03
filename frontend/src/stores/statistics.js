@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { ref } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
 export const useStatisticsStore = defineStore('statistics', () => {
     const topCoins = ref([])
@@ -15,7 +16,7 @@ export const useStatisticsStore = defineStore('statistics', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await axios.get('/api/statistics')
+            const response = await axios.get(API_ENDPOINTS.STATISTICS.BASE)
             topCoins.value = response.data.top_coins || []
             topGameWins.value = response.data.top_game_wins || []
             topMatchWins.value = response.data.top_match_wins || []

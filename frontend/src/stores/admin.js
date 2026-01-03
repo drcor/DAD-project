@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { ref } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
 export const useAdminStore = defineStore('admin', () => {
     const users = ref([])
@@ -26,7 +27,7 @@ export const useAdminStore = defineStore('admin', () => {
                 ...filters
             }
 
-            const response = await axios.get('/api/admin/users', { params })
+            const response = await axios.get(API_ENDPOINTS.ADMIN.USERS, { params })
 
             users.value = response.data.data
             pagination.value = {
@@ -47,7 +48,7 @@ export const useAdminStore = defineStore('admin', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await axios.get(`/api/admin/users/${userId}`)
+            const response = await axios.get(API_ENDPOINTS.ADMIN.USER(userId))
             selectedUser.value = response.data
             return response.data
         } catch (e) {
@@ -61,7 +62,7 @@ export const useAdminStore = defineStore('admin', () => {
 
     async function blockUser(userId) {
         try {
-            const response = await axios.patch(`/api/admin/users/${userId}/block`)
+            const response = await axios.patch(API_ENDPOINTS.ADMIN.USER_BLOCK(userId))
             return response.data
         } catch (e) {
             console.error("Error blocking user:", e)
@@ -71,7 +72,7 @@ export const useAdminStore = defineStore('admin', () => {
 
     async function unblockUser(userId) {
         try {
-            const response = await axios.patch(`/api/admin/users/${userId}/unblock`)
+            const response = await axios.patch(API_ENDPOINTS.ADMIN.USER_UNBLOCK(userId))
             return response.data
         } catch (e) {
             console.error("Error unblocking user:", e)
@@ -81,7 +82,7 @@ export const useAdminStore = defineStore('admin', () => {
 
     async function createAdmin(data) {
         try {
-            const response = await axios.post('/api/admin/users', data)
+            const response = await axios.post(API_ENDPOINTS.ADMIN.USERS, data)
             return response.data
         } catch (e) {
             console.error("Error creating admin:", e)
@@ -91,7 +92,7 @@ export const useAdminStore = defineStore('admin', () => {
 
     async function deleteUser(userId) {
         try {
-            const response = await axios.delete(`/api/admin/users/${userId}`)
+            const response = await axios.delete(API_ENDPOINTS.ADMIN.USER(userId))
             return response.data
         } catch (e) {
             console.error("Error deleting user:", e)
@@ -111,7 +112,7 @@ export const useAdminStore = defineStore('admin', () => {
                 params.user_id = userId
             }
 
-            const response = await axios.get('/api/admin/transactions', { params })
+            const response = await axios.get(API_ENDPOINTS.ADMIN.TRANSACTIONS, { params })
 
             transactions.value = response.data.data
             pagination.value = {
@@ -132,7 +133,7 @@ export const useAdminStore = defineStore('admin', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await axios.get(`/api/admin/users/${userId}/transactions`, {
+            const response = await axios.get(API_ENDPOINTS.ADMIN.USER_TRANSACTIONS(userId), {
                 params: {
                     page,
                     per_page: perPage
@@ -159,7 +160,7 @@ export const useAdminStore = defineStore('admin', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await axios.get('/api/admin/statistics')
+            const response = await axios.get(API_ENDPOINTS.ADMIN.STATISTICS)
             statistics.value = response.data
             return response.data
         } catch (e) {

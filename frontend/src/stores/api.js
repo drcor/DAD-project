@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import { inject, ref } from 'vue'
+import { ref } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
 export const useAPIStore = defineStore('api', () => {
-  const API_BASE_URL = inject('apiBaseURL')
 
   // Load token from sessionStorage on init
   const savedToken = sessionStorage.getItem('authToken')
@@ -46,7 +46,7 @@ export const useAPIStore = defineStore('api', () => {
       console.log(`  ${key}:`, value instanceof File ? `File(${value.name})` : value)
     }
 
-    const response = await axios.post(`${API_BASE_URL}/register`, formData, {
+    const response = await axios.post(API_ENDPOINTS.AUTH.REGISTER, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -55,7 +55,7 @@ export const useAPIStore = defineStore('api', () => {
   }
 
   const postLogin = async (credentials) => {
-    const response = await axios.post(`${API_BASE_URL}/login`, credentials)
+    const response = await axios.post(API_ENDPOINTS.AUTH.LOGIN, credentials)
     token.value = response.data.token
     // Save token to sessionStorage
     sessionStorage.setItem('authToken', response.data.token)
@@ -63,7 +63,7 @@ export const useAPIStore = defineStore('api', () => {
   }
 
   const postLogout = async () => {
-    await axios.post(`${API_BASE_URL}/logout`)
+    await axios.post(API_ENDPOINTS.AUTH.LOGOUT)
     token.value = undefined
     // Remove token from sessionStorage
     sessionStorage.removeItem('authToken')
@@ -72,25 +72,25 @@ export const useAPIStore = defineStore('api', () => {
 
   // Users / Profile
   const getAuthUser = () => {
-    return axios.get(`${API_BASE_URL}/users/me`)
+    return axios.get(API_ENDPOINTS.AUTH.USER)
   }
 
   const getProfile = () => {
-    return axios.get(`${API_BASE_URL}/profile`)
+    return axios.get(API_ENDPOINTS.AUTH.PROFILE)
   }
 
   const updateProfile = (userData) => {
-    return axios.put(`${API_BASE_URL}/profile`, userData)
+    return axios.put(API_ENDPOINTS.AUTH.PROFILE, userData)
   }
 
   const updatePassword = (passwordData) => {
-    return axios.put(`${API_BASE_URL}/profile/password`, passwordData)
+    return axios.put(API_ENDPOINTS.AUTH.PROFILE_PASSWORD, passwordData)
   }
 
   const uploadPhoto = (photo) => {
     const formData = new FormData()
     formData.append('photo', photo)
-    return axios.post(`${API_BASE_URL}/profile/photo`, formData, {
+    return axios.post(API_ENDPOINTS.AUTH.PROFILE_PHOTO, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -98,11 +98,11 @@ export const useAPIStore = defineStore('api', () => {
   }
 
   const deletePhoto = () => {
-    return axios.delete(`${API_BASE_URL}/profile/photo`)
+    return axios.delete(API_ENDPOINTS.AUTH.PROFILE_PHOTO)
   }
 
   const deleteAccount = (confirmation) => {
-    return axios.delete(`${API_BASE_URL}/profile`, {
+    return axios.delete(API_ENDPOINTS.AUTH.PROFILE, {
       data: { confirmation },
     })
   }
@@ -124,7 +124,7 @@ export const useAPIStore = defineStore('api', () => {
       sort_by: gameQueryParameters.value.filters.sort_by,
       sort_direction: gameQueryParameters.value.filters.sort_direction,
     }).toString()
-    return axios.get(`${API_BASE_URL}/games?${queryParams}`)
+    return axios.get(`${API_ENDPOINTS.GAMES}?${queryParams}`)
   }
 
   return {

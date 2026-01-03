@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { useStatisticsStore } from '@/stores/statistics'
+import { API_ENDPOINTS } from '@/config/api'
+import axios from 'axios'
 import LineChart from '@/components/charts/LineChart.vue'
 import {
   Trophy,
@@ -27,23 +29,21 @@ onMounted(async () => {
 
 const fetchRecentActivityStats = async () => {
   try {
-    const response = await fetch('/api/statistics/timeline?days=1', {
+    const response = await axios.get(`${API_ENDPOINTS.STATISTICS.TIMELINE}?days=1`, {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     })
 
-    if (response.ok) {
-      const data = await response.json()
-      // Calculate totals from the last 24 hours
-      const gamesLast24h = data.games_played?.reduce((sum, d) => sum + d.count, 0) || 0
-      const matchesLast24h = data.matches_played?.reduce((sum, d) => sum + d.count, 0) || 0
+    const data = response.data
+    // Calculate totals from the last 24 hours
+    const gamesLast24h = data.games_played?.reduce((sum, d) => sum + d.count, 0) || 0
+    const matchesLast24h = data.matches_played?.reduce((sum, d) => sum + d.count, 0) || 0
 
-      recentActivityStats.value = {
-        games_last_24h: gamesLast24h,
-        matches_last_24h: matchesLast24h,
-      }
+    recentActivityStats.value = {
+      games_last_24h: gamesLast24h,
+      matches_last_24h: matchesLast24h,
     }
   } catch (error) {
     console.error('Failed to fetch recent activity stats:', error)
@@ -57,20 +57,14 @@ const fetchRecentActivityStats = async () => {
 const fetchTimelineData = async () => {
   try {
     loadingTimeline.value = true
-    const response = await fetch('/api/statistics/timeline?days=30', {
+    const response = await axios.get(`${API_ENDPOINTS.STATISTICS.TIMELINE}?days=30`, {
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     })
 
-    if (response.ok) {
-      const data = await response.json()
-      timelineData.value = data
-    } else {
-      const errorText = await response.text()
-      console.error('Failed to fetch timeline data:', response.status, errorText)
-    }
+    timelineData.value = response.data
   } catch (error) {
     console.error('Failed to fetch timeline data:', error)
   } finally {

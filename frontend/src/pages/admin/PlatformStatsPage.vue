@@ -3,6 +3,8 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
+import { API_ENDPOINTS } from '@/config/api'
+import axios from 'axios'
 import LineChart from '@/components/charts/LineChart.vue'
 import PieChart from '@/components/charts/PieChart.vue'
 import DateRangeFilter from '@/components/DateRangeFilter.vue'
@@ -122,26 +124,18 @@ const fetchTimelineData = async () => {
       return
     }
 
-    const response = await fetch(`/api/admin/statistics/timeline?days=${selectedDays.value}`, {
+    const response = await axios.get(`${API_ENDPOINTS.ADMIN.TIMELINE}?days=${selectedDays.value}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
       },
     })
 
-    if (response.ok) {
-      const data = await response.json()
-      timelineData.value = data
-    } else {
-      if (handleAuthError(response, 'timeline statistics')) {
-        return
-      }
-      const errorText = await response.text()
-      console.error('Failed to fetch timeline data:', response.status, errorText)
-      authError.value = `Failed to load timeline data: ${response.status}`
-    }
+    timelineData.value = response.data
   } catch (error) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      handleAuthError(error.response, 'timeline statistics')
+      return
+    }
     console.error('Failed to fetch timeline data:', error)
     authError.value = 'Network error while loading timeline data. Please check your connection.'
   } finally {
@@ -154,20 +148,20 @@ const fetchEngagementMetrics = async () => {
     const token = getAuthToken()
     if (!token) return
 
-    const response = await fetch(`/api/admin/statistics/engagement?days=${selectedDays.value}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
+    const response = await axios.get(
+      `${API_ENDPOINTS.ADMIN.ENGAGEMENT}?days=${selectedDays.value}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    })
+    )
 
-    if (response.ok) {
-      engagementMetrics.value = await response.json()
-    } else if (!handleAuthError(response, 'engagement metrics')) {
-      console.error('Failed to fetch engagement metrics:', response.status)
-    }
+    engagementMetrics.value = response.data
   } catch (error) {
-    console.error('Failed to fetch engagement metrics:', error)
+    if (error.response && !handleAuthError(error.response, 'engagement metrics')) {
+      console.error('Failed to fetch engagement metrics:', error.response?.status)
+    }
   }
 }
 
@@ -176,38 +170,32 @@ const fetchGamePerformanceMetrics = async () => {
     const token = getAuthToken()
     if (!token) return
 
-    const response = await fetch(
-      `/api/admin/statistics/game-performance?days=${selectedDays.value}`,
+    const response = await axios.get(
+      `${API_ENDPOINTS.ADMIN.GAME_PERFORMANCE}?days=${selectedDays.value}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
         },
       },
     )
 
-    if (response.ok) {
-      gamePerformanceMetrics.value = await response.json()
-    } else if (!handleAuthError(response, 'game performance metrics')) {
-      console.error('Failed to fetch game performance metrics:', response.status)
-    }
+    gamePerformanceMetrics.value = response.data
   } catch (error) {
-    console.error('Failed to fetch game performance metrics:', error)
+    if (error.response && !handleAuthError(error.response, 'game performance metrics')) {
+      console.error('Failed to fetch game performance metrics:', error.response?.status)
+    }
   }
 }
 
 const fetchEconomyMetrics = async () => {
   try {
     const token = sessionStorage.getItem('authToken')
-    const response = await fetch(`/api/admin/statistics/economy?days=${selectedDays.value}`, {
+    const response = await axios.get(`${API_ENDPOINTS.ADMIN.ECONOMY}?days=${selectedDays.value}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
       },
     })
-    if (response.ok) {
-      economyMetrics.value = await response.json()
-    }
+    economyMetrics.value = response.data
   } catch (error) {
     console.error('Failed to fetch economy metrics:', error)
   }
@@ -216,18 +204,15 @@ const fetchEconomyMetrics = async () => {
 const fetchTransactionTypeData = async () => {
   try {
     const token = sessionStorage.getItem('authToken')
-    const response = await fetch(
-      `/api/admin/statistics/transactions/by-type?days=${selectedDays.value}`,
+    const response = await axios.get(
+      `${API_ENDPOINTS.ADMIN.TRANSACTIONS_BY_TYPE}?days=${selectedDays.value}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
         },
       },
     )
-    if (response.ok) {
-      transactionTypeData.value = await response.json()
-    }
+    transactionTypeData.value = response.data
   } catch (error) {
     console.error('Failed to fetch transaction type data:', error)
   }
@@ -238,21 +223,21 @@ const fetchRecentActivity = async () => {
     const token = sessionStorage.getItem('authToken')
     // Fetch recent transactions, games, users
     const [transactionsRes, gamesRes, usersRes] = await Promise.all([
-      fetch('/api/admin/transactions?limit=10', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      axios.get(`${API_ENDPOINTS.ADMIN.TRANSACTIONS}?limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
       }),
-      fetch('/api/games?limit=10', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      axios.get(`${API_ENDPOINTS.GAMES}?limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
       }),
-      fetch('/api/admin/users?limit=10&sort=created_at&order=desc', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      axios.get(`${API_ENDPOINTS.ADMIN.USERS}?limit=10&sort=created_at&order=desc`, {
+        headers: { Authorization: `Bearer ${token}` },
       }),
     ])
 
     recentActivity.value = {
-      transactions: transactionsRes.ok ? await transactionsRes.json() : [],
-      games: gamesRes.ok ? await gamesRes.json() : [],
-      users: usersRes.ok ? await usersRes.json() : [],
+      transactions: transactionsRes.data,
+      games: gamesRes.data,
+      users: usersRes.data,
     }
   } catch (error) {
     console.error('Failed to fetch recent activity:', error)

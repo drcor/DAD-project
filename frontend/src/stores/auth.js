@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAPIStore } from './api'
+import axios from 'axios'
 
 export const useAuthStore = defineStore('auth', () => {
   const apiStore = useAPIStore()
@@ -40,27 +41,46 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = async () => {
-    await apiStore.postLogout()
+    try {
+      await apiStore.postLogout()
+    } catch {
+      // Ignore logout errors, just clear local state
+      console.warn('[Auth] Logout request failed, clearing local session anyway')
+    }
     currentUser.value = undefined
     // Remove user from sessionStorage
     sessionStorage.removeItem('currentUser')
+    sessionStorage.removeItem('authToken')
+    // Clear axios authorization header
+    delete axios.defaults.headers.common['Authorization']
   }
 
   // Initialize: restore session if token exists
   const restoreSession = async () => {
     const token = sessionStorage.getItem('authToken')
-    if (token) {
-      try {
-        const response = await apiStore.getAuthUser()
-        currentUser.value = response.data
-        sessionStorage.setItem('currentUser', JSON.stringify(response.data))
-      } catch (error) {
-        console.error('[Auth] Failed to restore session:', error)
-        // Token might be invalid, clear everything
-        sessionStorage.removeItem('authToken')
-        sessionStorage.removeItem('currentUser')
-        currentUser.value = undefined
+    if (!token) {
+      // No token, ensure everything is cleared
+      currentUser.value = undefined
+      sessionStorage.removeItem('currentUser')
+      return
+    }
+
+    try {
+      const response = await apiStore.getAuthUser()
+      currentUser.value = response.data
+      sessionStorage.setItem('currentUser', JSON.stringify(response.data))
+      console.log('[Auth] Session restored for user:', response.data.nickname)
+    } catch (error) {
+      // Token is invalid or expired - silently clear everything
+      if (error.response?.status === 401) {
+        console.log('[Auth] Token expired, clearing session')
+      } else {
+        console.warn('[Auth] Failed to restore session:', error.message)
       }
+      sessionStorage.removeItem('authToken')
+      sessionStorage.removeItem('currentUser')
+      currentUser.value = undefined
+      delete axios.defaults.headers.common['Authorization']
     }
   }
 
@@ -77,7 +97,13 @@ export const useAuthStore = defineStore('auth', () => {
       sessionStorage.setItem('currentUser', JSON.stringify(response.data))
       console.log('[Auth] User data refreshed - new balance:', response.data.coins_balance)
     } catch (error) {
-      console.error('[Auth] Failed to refresh user data:', error)
+      // If token is invalid during refresh, logout
+      if (error.response?.status === 401) {
+        console.warn('[Auth] Token expired during refresh, logging out')
+        await logout()
+      } else {
+        console.error('[Auth] Failed to refresh user data:', error.message)
+      }
     }
   }
 

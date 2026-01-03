@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { ref } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
 export const useTransactionsStore = defineStore('transactions', () => {
     const transactions = ref([])
@@ -17,7 +18,7 @@ export const useTransactionsStore = defineStore('transactions', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await axios.get('/api/transactions', {
+            const response = await axios.get(API_ENDPOINTS.TRANSACTIONS, {
                 params: {
                     page,
                     per_page: perPage

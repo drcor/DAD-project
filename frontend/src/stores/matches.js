@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import { API_ENDPOINTS } from '@/config/api'
 
 export const useMatchesStore = defineStore('matches', () => {
     // State
@@ -30,7 +31,7 @@ export const useMatchesStore = defineStore('matches', () => {
                 ...filters
             }
 
-            const response = await axios.get('/api/matches', { params })
+            const response = await axios.get(API_ENDPOINTS.MATCHES, { params })
 
             matches.value = response.data.data
             currentPage.value = response.data.meta.current_page
@@ -50,7 +51,7 @@ export const useMatchesStore = defineStore('matches', () => {
         error.value = null
 
         try {
-            const response = await axios.get(`/api/matches/${matchId}`)
+            const response = await axios.get(API_ENDPOINTS.MATCH(matchId))
             selectedMatch.value = response.data.data
             return response.data.data
         } catch (err) {

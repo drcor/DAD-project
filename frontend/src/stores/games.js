@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 import { ref } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
 export const useGamesStore = defineStore('games', () => {
     const games = ref([])
@@ -18,7 +19,7 @@ export const useGamesStore = defineStore('games', () => {
         error.value = null
         try {
             // GET /api/games with pagination
-            const response = await axios.get('/api/games', {
+            const response = await axios.get(API_ENDPOINTS.GAMES, {
                 params: {
                     page,
                     per_page: perPage
