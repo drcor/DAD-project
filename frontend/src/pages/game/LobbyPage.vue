@@ -81,6 +81,72 @@
         </p>
       </div>
 
+      <!-- Active Games (games to rejoin) -->
+      <div
+        v-if="authStore.isLoggedIn && activeGames.length > 0"
+        class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-md p-6 mb-6 border-2 border-blue-200"
+      >
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Your Active Games</h2>
+        <p class="text-sm text-gray-600 mb-4">Click to rejoin games you're currently in</p>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div
+            v-for="game in activeGames"
+            :key="game.id"
+            class="border-2 border-blue-300 bg-white rounded-lg p-4 hover:border-blue-500 transition-colors"
+          >
+            <div class="flex items-start justify-between mb-3">
+              <div>
+                <h3 class="font-bold text-lg text-gray-800">
+                  {{
+                    game.status === 'waiting'
+                      ? 'Waiting for opponent...'
+                      : `vs ${game.opponentName}`
+                  }}
+                </h3>
+                <p class="text-xs text-gray-500">Game #{{ game.id }}</p>
+              </div>
+              <span
+                :class="[
+                  'px-2 py-1 rounded text-xs font-semibold',
+                  game.type === 'match'
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'bg-blue-100 text-blue-700',
+                ]"
+              >
+                {{ game.type === 'match' ? 'Match' : 'Standalone' }}
+              </span>
+            </div>
+
+            <div class="space-y-2 mb-4">
+              <div class="flex items-center gap-2 text-sm text-gray-600">
+                <span class="font-medium">Variant:</span>
+                <span>Bisca de {{ game.variant }}</span>
+              </div>
+
+              <div v-if="game.isMatch" class="flex items-center gap-2 text-sm text-gray-600">
+                <span class="font-medium">Game:</span>
+                <span>{{ game.currentGameNumber }}</span>
+              </div>
+
+              <div class="flex items-center gap-2 text-sm text-gray-600">
+                <span class="font-medium">Status:</span>
+                <span :class="game.status === 'in-progress' ? 'text-green-600' : 'text-yellow-600'">
+                  ● {{ game.status === 'in-progress' ? 'In Progress' : 'Waiting' }}
+                </span>
+              </div>
+            </div>
+
+            <button
+              @click="rejoinGame(game.id)"
+              class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Rejoin Game
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Available Games List -->
       <div class="bg-white rounded-xl shadow-md p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Available Games</h2>
@@ -200,6 +266,7 @@ const isCreating = ref(false)
 const isJoining = ref(false)
 const isCancelling = ref(false)
 const showStakeDialog = ref(false)
+const activeGames = ref([])
 
 // Initialize socket connection
 onMounted(() => {
@@ -228,9 +295,18 @@ onMounted(() => {
     router.push(`/game/multiplayer/${data.gameId}`)
   })
 
+  // Listen for active games response
+  socketStore.socket.on('active-games', (data) => {
+    console.log('[Lobby] Active games received:', data.games)
+    activeGames.value = data.games
+  })
+
   // Request available games
   setTimeout(() => {
     socketStore.emitGetGames()
+    if (authStore.isLoggedIn) {
+      socketStore.emitGetActiveGames()
+    }
   }, 500)
 })
 
@@ -239,6 +315,7 @@ onUnmounted(() => {
   // Remove event listeners to prevent memory leaks
   socketStore.socket.off('game-created')
   socketStore.socket.off('game-started')
+  socketStore.socket.off('active-games')
 })
 
 // Methods
@@ -314,5 +391,22 @@ const cancelGame = (gameId) => {
   setTimeout(() => {
     isCancelling.value = false
   }, 1000)
+}
+
+const rejoinGame = (gameId) => {
+  if (!authStore.isLoggedIn) {
+    alert('Please log in to rejoin games')
+    return
+  }
+
+  console.log('[Lobby] Rejoining game:', gameId)
+
+  // Emit join-game event (backend will detect it's a rejoin)
+  socketStore.emitJoinGame({ id: gameId })
+
+  // Navigate to multiplayer page
+  setTimeout(() => {
+    router.push(`/game/multiplayer/${gameId}`)
+  }, 300)
 }
 </script>

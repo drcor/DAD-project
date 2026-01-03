@@ -204,6 +204,22 @@ export const joinGame = (gameID, user) => {
     return game
 }
 
+/**
+ * Check if user is a player in the game and allow them to rejoin
+ * @param {number} gameID - Game ID
+ * @param {number} userId - User ID
+ * @returns {Object|null} - Game object if user is a player, null otherwise
+ */
+export const canRejoinGame = (gameID, userId) => {
+    const game = games.get(gameID)
+    if (!game) return null
+
+    // Check if user is one of the players in this game
+    const isPlayer = game.player1 === userId || game.player2 === userId
+
+    return isPlayer ? game : null
+}
+
 export const playCard = (gameID, cardId, playerId) => {
     console.log(`[playCard] Called with gameID: ${gameID}, cardId: ${cardId}, playerId: ${playerId}`)
 
@@ -990,6 +1006,28 @@ export const getUserPendingGames = (userId) => {
     return Array.from(games.values()).filter(
         g => g.status === 'waiting' && g.creator === userId
     )
+}
+
+/**
+ * Get list of active (in-progress) games where user is a player
+ * @param {number} userId 
+ * @returns {Array}
+ */
+export const getUserActiveGames = (userId) => {
+    return Array.from(games.values()).filter(
+        g => (g.player1 === userId || g.player2 === userId) &&
+            (g.status === 'waiting' || g.status === 'in-progress')
+    ).map(g => ({
+        id: g.id,
+        variant: g.variant,
+        type: g.type,
+        status: g.status,
+        isMatch: g.isMatch,
+        currentGameNumber: g.currentGameNumber,
+        player1Name: g.player1Name,
+        player2Name: g.player2Name,
+        opponentName: g.player1 === userId ? g.player2Name : g.player1Name
+    }))
 }
 
 // Export timer functions

@@ -4,6 +4,7 @@ import {
     getGames,
     getGame,
     joinGame,
+    canRejoinGame,
     dealCards,
     playCard,
     resolveTrick,
@@ -14,7 +15,8 @@ import {
     clearMoveTimer,
     cancelGame,
     getUserPendingGamesCount,
-    getUserPendingGames
+    getUserPendingGames,
+    getUserActiveGames
 } from "../state/game.js"
 
 /**
@@ -179,6 +181,32 @@ export const handleGameEvents = (io, socket) => {
                 return
             }
 
+            // Check if user is already a player in this game (rejoining)
+            const existingGame = canRejoinGame(gameId, user.id)
+
+            if (existingGame) {
+                // User is rejoining the game
+                socket.join(`game-${gameId}`)
+                console.log(`[Game] ${user.name} rejoined game ${gameId}`)
+
+                // Send current game state
+                const state = getGameStateForPlayer(existingGame, user.id)
+                socket.emit('game-state', state)
+
+                // If game has already started, notify them
+                if (existingGame.started) {
+                    socket.emit('game-rejoined', {
+                        id: existingGame.id,
+                        variant: existingGame.variant,
+                        type: existingGame.type,
+                        message: 'Rejoined game successfully'
+                    })
+                }
+
+                return
+            }
+
+            // New player joining
             const game = joinGame(gameId, user)
 
             if (!game) {
@@ -544,6 +572,28 @@ export const handleGameEvents = (io, socket) => {
         } catch (error) {
             console.error('[Game] Error getting pending games count:', error)
             socket.emit('error', { message: 'Failed to get pending games count' })
+        }
+    })
+
+    /**
+     * Get user's active games (games they're currently in)
+     */
+    socket.on('get-active-games', () => {
+        try {
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const activeGames = getUserActiveGames(user.id)
+
+            socket.emit('active-games', { games: activeGames })
+
+        } catch (error) {
+            console.error('[Game] Error getting active games:', error)
+            socket.emit('error', { message: 'Failed to get active games' })
         }
     })
 }

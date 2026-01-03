@@ -65,6 +65,11 @@ export const useSocketStore = defineStore('socket', () => {
             // This event will be handled by individual pages that need to redirect
         })
 
+        socket.on('game-rejoined', (data) => {
+            console.log(`[Socket] Game rejoined:`, data)
+            // This event indicates successful rejoin
+        })
+
         socket.on('game-cancelled', (data) => {
             console.log(`[Socket] Game cancelled:`, data)
             // Refresh the game list to remove the cancelled game
@@ -142,6 +147,11 @@ export const useSocketStore = defineStore('socket', () => {
         socket.emit('cancel-game', { gameId: gameID })
     }
 
+    const emitGetActiveGames = () => {
+        console.log(`[Socket] Requesting active games`)
+        socket.emit('get-active-games')
+    }
+
     const emitFlipCard = (gameID, card) => { socket.emit('flip-card', gameID, card) }
 
     return {
@@ -159,6 +169,7 @@ export const useSocketStore = defineStore('socket', () => {
         emitLeaveGame,
         emitStartNextMatchGame,
         emitCancelGame,
+        emitGetActiveGames,
         emitFlipCard,
     }
 })
