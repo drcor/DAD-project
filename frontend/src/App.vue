@@ -2,7 +2,9 @@
   <Toaster richColors />
   <nav class="max-w-full p-5 flex flex-row justify-between align-middle">
     <div class="align-middle text-xl">
-      <RouterLink to="/"> {{ pageTitle }} </RouterLink>
+      <RouterLink :to="authStore.isAdmin ? '/admin/statistics' : '/'">
+        {{ pageTitle }}
+      </RouterLink>
       <span class="text-xs" v-if="authStore.currentUser"
         >&nbsp;&nbsp;&nbsp; ({{ authStore.currentUser?.name }})
       </span>

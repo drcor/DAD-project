@@ -264,7 +264,7 @@ class ApiClient {
             beganAt: game.matchBeganAt || game.beganAt,
             endedAt: game.matchEndedAt || game.endedAt,
             currentGameNumber: game.currentGameNumber,
-            stake: 3 // Default stake
+            stake: game.stake || 3 // Use actual stake or default to 3
         }
     }
 

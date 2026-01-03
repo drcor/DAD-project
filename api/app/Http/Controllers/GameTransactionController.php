@@ -58,13 +58,21 @@ class GameTransactionController extends Controller
     public function deductFee(Request $request)
     {
         try {
-            // Authenticate request (user or internal API key)
-            $this->authenticateRequest($request);
-            $user = $request->user(); // May be null for internal API calls
+            // SECURITY: Only allow internal API key (WebSocket server), NOT user tokens
+            $apiKey = $request->header('X-Internal-API-Key');
+            $expectedKey = config('app.internal_api_key');
+            
+            if (!$apiKey || !$expectedKey || $apiKey !== $expectedKey) {
+                Log::warning('[Security] Unauthorized game fee deduction attempt', [
+                    'ip' => $request->ip(),
+                    'user_id' => $request->user()?->id,
+                ]);
+                throw new \Exception('Unauthorized. This endpoint is restricted to internal service calls.');
+            }
 
             // Common validation for both endpoints
             $validated = $request->validate([
-                'game_id' => 'required|integer|exists:games,id',
+                'game_id' => 'required|integer|exists:games,id', // MUST exist in DB
                 'player1_id' => 'required|integer|exists:users,id',
                 'player2_id' => 'required|integer|exists:users,id',
             ]);
@@ -73,34 +81,34 @@ class GameTransactionController extends Controller
             $player2 = User::findOrFail($validated['player2_id']);
             $gameId = $validated['game_id'];
 
-            // Load game and enforce server-side consistency
+            // SECURITY: Load game from database - it MUST exist
             $game = Game::findOrFail($gameId);
 
-            // Ensure the supplied player IDs match the actual game participants
-            if (
-                ($game->player1_user_id ?? null) !== $player1->id ||
-                ($game->player2_user_id ?? null) !== $player2->id
-            ) {
-                throw new \Exception('Player IDs do not match the game participants');
+            // SECURITY: Verify players match the database game record
+            if ($game->player1_user_id !== $player1->id || $game->player2_user_id !== $player2->id) {
+                Log::error('[Security] Player mismatch in fee deduction', [
+                    'game_id' => $gameId,
+                    'expected' => [$game->player1_user_id, $game->player2_user_id],
+                    'provided' => [$player1->id, $player2->id],
+                ]);
+                throw new \Exception('Player IDs do not match the game record');
             }
 
-            // Ensure the acting user is one of the participants (prevents arbitrary callers)
-            // Skip this check for internal API calls (user will be null)
-            if ($user && !in_array($user->id, [$player1->id, $player2->id], true)) {
-                throw new \Exception('You are not a participant of this game');
-            }
-
-            // Prevent double deduction: require a server-side flag/column on Game
-            // (adjust property name to match your schema; common names: fees_deducted / fee_taken)
-            if (!empty($game->fees_deducted)) {
+            // SECURITY: Verify fees haven't already been deducted
+            if ($game->fees_deducted) {
                 throw new \Exception('Game fees have already been deducted for this game');
             }
 
-            // Deduct fee from both players (service should also be idempotent/verify)
+            // SECURITY: Verify game is in correct state
+            if ($game->status === 'Ended') {
+                throw new \Exception('Cannot deduct fees from ended game');
+            }
+
+            // Deduct fee from both players
             $transaction1 = $this->transactionService->deductGameFee($player1, $gameId);
             $transaction2 = $this->transactionService->deductGameFee($player2, $gameId);
 
-            // Mark fees as deducted on the game to prevent replay
+            // Mark fees as deducted
             $game->fees_deducted = true;
             $game->save();
 

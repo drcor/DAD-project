@@ -80,16 +80,23 @@ export const handleGameEvents = (io, socket) => {
                 return
             }
 
+            // Administrators cannot create games
+            if (user.type === 'A') {
+                socket.emit('error', { message: 'Administrators cannot play games' })
+                return
+            }
+
             const game = createGame(user, options)
             socket.join(`game-${game.id}`)
 
-            console.log(`[Game] ${user.name} created game ${game.id} - Variant: ${game.variant}, Type: ${game.type}`)
+            console.log(`[Game] ${user.name} created game ${game.id} - Variant: ${game.variant}, Type: ${game.type}, Stake: ${game.stake || 'N/A'}`)
 
             // Emit to creator
             socket.emit('game-created', {
                 id: game.id,
                 variant: game.variant,
                 type: game.type,
+                stake: game.stake,
                 creatorName: game.creatorName
             })
 
@@ -159,6 +166,12 @@ export const handleGameEvents = (io, socket) => {
 
             if (!user) {
                 socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            // Administrators cannot join games
+            if (user.type === 'A') {
+                socket.emit('error', { message: 'Administrators cannot play games' })
                 return
             }
 

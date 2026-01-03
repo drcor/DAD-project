@@ -13,6 +13,14 @@ export const useAuthStore = defineStore('auth', () => {
     return currentUser.value !== undefined
   })
 
+  const isAdmin = computed(() => {
+    return currentUser.value?.type === 'A'
+  })
+
+  const isPlayer = computed(() => {
+    return currentUser.value?.type === 'P'
+  })
+
   const currentUserID = computed(() => {
     return currentUser.value?.id
   })
@@ -76,6 +84,8 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     currentUser,
     isLoggedIn,
+    isAdmin,
+    isPlayer,
     currentUserID,
     login,
     register,

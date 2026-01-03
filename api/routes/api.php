@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\GameTransactionController;
 use App\Http\Controllers\MatchTransactionController;
+use App\Http\Controllers\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\StatisticsController;
@@ -29,7 +30,11 @@ Route::post('/matches/transactions/stake', [MatchTransactionController::class, '
 Route::post('/matches/transactions/payout', [MatchTransactionController::class, 'awardPayout']);
 
 // Public statistics/leaderboards (no auth required - anyone can view)
-Route::get('/statistics', [StatisticsController::class, 'index']);
+// Rate limited to prevent abuse: 60 requests per minute per IP
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/statistics', [StatisticsController::class, 'index']);
+    Route::get('/statistics/timeline', [StatisticsController::class, 'timeline']);
+});
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -61,4 +66,30 @@ Route::middleware('auth:sanctum')->group(function () {
     // Match routes with auth
     Route::get('/matches', [MatchController::class, 'index']);
     Route::get('/matches/{id}', [MatchController::class, 'show']);
+    
+    // Admin routes - Only accessible by administrators
+    // Protected by auth:sanctum (authentication) and admin (authorization) middleware
+    Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::get('/users', [AdminController::class, 'getAllUsers']);
+        Route::get('/users/{userId}', [AdminController::class, 'getUser']);
+        Route::post('/users', [AdminController::class, 'createAdmin']);
+        Route::delete('/users/{userId}', [AdminController::class, 'deleteUser']);
+        Route::patch('/users/{userId}/block', [AdminController::class, 'blockUser']);
+        Route::patch('/users/{userId}/unblock', [AdminController::class, 'unblockUser']);
+        
+        Route::get('/transactions', [AdminController::class, 'getAllTransactions']);
+        Route::get('/users/{userId}/transactions', [AdminController::class, 'getUserTransactions']);
+        
+        Route::get('/statistics', [AdminController::class, 'getPlatformStatistics']);
+        Route::get('/statistics/timeline', [AdminController::class, 'getTimeline']);
+        Route::get('/statistics/transactions/by-period', [AdminController::class, 'getTransactionsByPeriod']);
+        Route::get('/statistics/transactions/by-user', [AdminController::class, 'getTransactionsByUser']);
+        Route::get('/statistics/transactions/by-type', [AdminController::class, 'getTransactionTypeBreakdown']);
+        Route::get('/statistics/games/by-period', [AdminController::class, 'getGamesByPeriod']);
+        Route::get('/statistics/matches/by-period', [AdminController::class, 'getMatchesByPeriod']);
+        Route::get('/statistics/users/registrations-by-period', [AdminController::class, 'getUserRegistrationsByPeriod']);
+        Route::get('/statistics/engagement', [AdminController::class, 'getEngagementMetrics']);
+        Route::get('/statistics/game-performance', [AdminController::class, 'getGamePerformanceMetrics']);
+        Route::get('/statistics/economy', [AdminController::class, 'getEconomyMetrics']);
+    });
 });

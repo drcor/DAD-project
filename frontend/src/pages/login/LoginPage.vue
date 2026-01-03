@@ -81,8 +81,14 @@ const handleSubmit = async () => {
     // Show success toast
     toast.success(`Login successful - Welcome ${data?.name}!`)
 
-    // Redirect to home page only on success
-    router.push('/')
+    // Redirect based on user type
+    if (authStore.isAdmin) {
+      // Admin users go to platform statistics
+      router.push('/admin/statistics')
+    } else {
+      // Regular users go to home page
+      router.push('/')
+    }
   } catch (error) {
     // Login failed - show error and stay on login page
     const message = error?.response?.data?.message || 'Invalid credentials'
