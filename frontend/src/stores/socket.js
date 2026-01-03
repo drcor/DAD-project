@@ -74,7 +74,7 @@ export const useSocketStore = defineStore('socket', () => {
             console.log(`[Socket] Game over:`, data)
             // The game state will be updated via game-state event
             // This event can be used for additional handling if needed
-            
+
             // Refresh user data to update coin balance after game transactions
             authStore.refreshUserData()
                 .catch(err => console.error('[Socket] Failed to refresh user data after game over:', err))
@@ -102,9 +102,13 @@ export const useSocketStore = defineStore('socket', () => {
         socket.emit('join-game', { gameId: game.id })
     }
 
-    const emitCreateGame = (variant, type) => {
-        console.log(`[Socket] Creating Game - Variant: ${variant}, Type: ${type}`)
-        socket.emit('create-game', { variant, type })
+    const emitCreateGame = (variant, type, stake = null) => {
+        const gameConfig = { variant, type }
+        if (type === 'match' && stake !== null) {
+            gameConfig.stake = stake
+        }
+        console.log(`[Socket] Creating Game - Variant: ${variant}, Type: ${type}, Stake: ${stake || 'N/A'}`)
+        socket.emit('create-game', gameConfig)
     }
 
     const emitPlayCard = (gameID, cardId) => {

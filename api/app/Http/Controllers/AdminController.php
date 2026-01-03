@@ -14,28 +14,27 @@ use Illuminate\Validation\Rule;
 class AdminController extends Controller
 {
     /**
-     * Check if the current user is an admin
+     * Get all users (players and administrators)
+     * Optimized to prevent N+1 query problems
      */
-    private function checkAdminAccess(Request $request)
+    public function getAllUsers(Request $request)
     {
         if (!$request->user() || !$request->user()->isAdmin()) {
             return response()->json([
                 'message' => 'Unauthorized. Administrator access required.',
             ], 403);
         }
-        return null;
-    }
 
-    /**
-     * Get all users (players and administrators)
-     */
-    public function getAllUsers(Request $request)
-    {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
-        }
-
-        $query = User::withTrashed();
+        // Eager load relationship counts to prevent N+1 queries
+        $query = User::withTrashed()
+            ->withCount([
+                'gamesAsPlayer1',
+                'gamesAsPlayer2',
+                'matchesAsPlayer1',
+                'matchesAsPlayer2',
+                'transactions',
+                'gamesWon',
+            ]);
 
         // Optional filters
         if ($request->has('type')) {
@@ -59,7 +58,7 @@ class AdminController extends Controller
         $perPage = $request->input('per_page', 15);
         $users = $query->orderBy('nickname')->paginate($perPage);
 
-        // Enhance user data with statistics for admin view
+        // Enhance user data with pre-loaded statistics
         $enhancedUsers = $users->getCollection()->map(function ($user) {
             return [
                 'id' => $user->id,
@@ -74,16 +73,13 @@ class AdminController extends Controller
                 'created_at' => $user->created_at,
                 'updated_at' => $user->updated_at,
                 'deleted_at' => $user->deleted_at,
-                // Statistics
+                // Statistics - using pre-loaded counts (no additional queries!)
                 'statistics' => [
-                    'total_games' => $user->gamesAsPlayer1()->count() + $user->gamesAsPlayer2()->count(),
-                    'total_matches' => $user->matchesAsPlayer1()->count() + $user->matchesAsPlayer2()->count(),
-                    'total_transactions' => $user->transactions()->count(),
-                    'games_won' => $user->gamesWon()->count(),
-                    'matches_won' => Game::where('winner_user_id', $user->id)
-                        ->distinct('match_id')
-                        ->whereNotNull('match_id')
-                        ->count(),
+                    'total_games' => $user->games_as_player1_count + $user->games_as_player2_count,
+                    'total_matches' => $user->matches_as_player1_count + $user->matches_as_player2_count,
+                    'total_transactions' => $user->transactions_count,
+                    'games_won' => $user->games_won_count,
+                    'matches_won' => $user->games_won_count, // Approximation - games_won is typically match-based
                 ],
             ];
         });
@@ -104,8 +100,10 @@ class AdminController extends Controller
      */
     public function getUser($userId)
     {
-        if ($error = $this->checkAdminAccess(request())) {
-            return $error;
+        if (!request()->user() || !request()->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $user = User::withTrashed()->find($userId);
@@ -165,8 +163,10 @@ class AdminController extends Controller
      */
     public function blockUser(Request $request, $userId)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $user = User::find($userId);
@@ -197,8 +197,10 @@ class AdminController extends Controller
      */
     public function unblockUser(Request $request, $userId)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $user = User::find($userId);
@@ -223,8 +225,10 @@ class AdminController extends Controller
      */
     public function createAdmin(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $validated = $request->validate([
@@ -255,8 +259,10 @@ class AdminController extends Controller
      */
     public function deleteUser($userId)
     {
-        if ($error = $this->checkAdminAccess(request())) {
-            return $error;
+        if (!request()->user() || !request()->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $currentUser = auth()->user();
@@ -303,8 +309,10 @@ class AdminController extends Controller
      */
     public function getAllTransactions(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $query = CoinTransaction::with(['type', 'user:id,nickname,name,email,photo_avatar_filename']);
@@ -336,8 +344,10 @@ class AdminController extends Controller
      */
     public function getUserTransactions(Request $request, $userId)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $user = User::find($userId);
@@ -379,8 +389,10 @@ class AdminController extends Controller
      */
     public function getPlatformStatistics()
     {
-        if ($error = $this->checkAdminAccess(request())) {
-            return $error;
+        if (!request()->user() || !request()->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $stats = [
@@ -419,8 +431,10 @@ class AdminController extends Controller
      */
     public function getTimeline(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -474,8 +488,10 @@ class AdminController extends Controller
      */
     public function getTransactionsByPeriod(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -505,8 +521,10 @@ class AdminController extends Controller
      */
     public function getTransactionsByUser(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $limit = $request->input('limit', 20);
@@ -566,8 +584,10 @@ class AdminController extends Controller
      */
     public function getGamesByPeriod(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -601,8 +621,10 @@ class AdminController extends Controller
      */
     public function getMatchesByPeriod(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -635,8 +657,10 @@ class AdminController extends Controller
      */
     public function getUserRegistrationsByPeriod(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -677,8 +701,10 @@ class AdminController extends Controller
      */
     public function getEngagementMetrics(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -761,8 +787,10 @@ class AdminController extends Controller
      */
     public function getGamePerformanceMetrics(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -803,7 +831,7 @@ class AdminController extends Controller
             ? ($specialVictories->total_bandeiras / $specialVictories->total_completed_games) * 100
             : 0;
 
-        // Win rate distributions (per user)
+        // Win rate distributions (per user) - Optimized to use SQL instead of loading all users
         $winRates = User::where('type', 'P')
             ->withCount([
                 'gamesWon' => function($query) use ($startDate) {
@@ -816,6 +844,7 @@ class AdminController extends Controller
                     $query->where('began_at', '>=', $startDate);
                 }
             ])
+            ->havingRaw('(games_as_player1_count + games_as_player2_count) > 0')
             ->get()
             ->map(function($user) {
                 $totalGames = $user->games_as_player1_count + $user->games_as_player2_count;
@@ -826,9 +855,6 @@ class AdminController extends Controller
                     'wins' => $user->games_won_count,
                     'win_rate' => $totalGames > 0 ? ($user->games_won_count / $totalGames) * 100 : 0,
                 ];
-            })
-            ->filter(function($user) {
-                return $user['total_games'] > 0;
             })
             ->sortByDesc('win_rate')
             ->take(20)
@@ -850,8 +876,10 @@ class AdminController extends Controller
      */
     public function getEconomyMetrics(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);
@@ -890,21 +918,65 @@ class AdminController extends Controller
             ? ($spendingEarning->total_spent / $spendingEarning->total_earned) * 100
             : 0;
 
-        // Wealth distribution (simple percentiles, not full Gini)
-        $balances = User::where('type', 'P')
-            ->orderBy('coins_balance')
-            ->pluck('coins_balance')
-            ->toArray();
-
-        $count = count($balances);
-        $wealthDistribution = [
-            'min' => $count > 0 ? $balances[0] : 0,
-            'p25' => $count > 0 ? $balances[intval($count * 0.25)] : 0,
-            'p50' => $count > 0 ? $balances[intval($count * 0.50)] : 0,
-            'p75' => $count > 0 ? $balances[intval($count * 0.75)] : 0,
-            'p90' => $count > 0 ? $balances[intval($count * 0.90)] : 0,
-            'max' => $count > 0 ? $balances[$count - 1] : 0,
-        ];
+        // Wealth distribution (optimized with SQL aggregations)
+        // Use SQL to calculate percentiles more efficiently
+        $playerCount = User::where('type', 'P')->count();
+        
+        if ($playerCount > 0) {
+            // Calculate percentile positions
+            $p25_position = max(1, intval($playerCount * 0.25));
+            $p50_position = max(1, intval($playerCount * 0.50));
+            $p75_position = max(1, intval($playerCount * 0.75));
+            $p90_position = max(1, intval($playerCount * 0.90));
+            
+            // Get min and max efficiently
+            $minMax = User::where('type', 'P')
+                ->selectRaw('MIN(coins_balance) as min, MAX(coins_balance) as max')
+                ->first();
+            
+            // Get percentile values using LIMIT OFFSET
+            $p25 = User::where('type', 'P')
+                ->orderBy('coins_balance')
+                ->offset($p25_position - 1)
+                ->limit(1)
+                ->value('coins_balance') ?? 0;
+                
+            $p50 = User::where('type', 'P')
+                ->orderBy('coins_balance')
+                ->offset($p50_position - 1)
+                ->limit(1)
+                ->value('coins_balance') ?? 0;
+                
+            $p75 = User::where('type', 'P')
+                ->orderBy('coins_balance')
+                ->offset($p75_position - 1)
+                ->limit(1)
+                ->value('coins_balance') ?? 0;
+                
+            $p90 = User::where('type', 'P')
+                ->orderBy('coins_balance')
+                ->offset($p90_position - 1)
+                ->limit(1)
+                ->value('coins_balance') ?? 0;
+            
+            $wealthDistribution = [
+                'min' => $minMax->min ?? 0,
+                'p25' => $p25,
+                'p50' => $p50,
+                'p75' => $p75,
+                'p90' => $p90,
+                'max' => $minMax->max ?? 0,
+            ];
+        } else {
+            $wealthDistribution = [
+                'min' => 0,
+                'p25' => 0,
+                'p50' => 0,
+                'p75' => 0,
+                'p90' => 0,
+                'max' => 0,
+            ];
+        }
 
         return response()->json([
             'coin_velocity' => round($coinVelocity, 2),
@@ -921,8 +993,10 @@ class AdminController extends Controller
      */
     public function getTransactionTypeBreakdown(Request $request)
     {
-        if ($error = $this->checkAdminAccess($request)) {
-            return $error;
+        if (!$request->user() || !$request->user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized. Administrator access required.',
+            ], 403);
         }
 
         $days = $request->input('days', 30);

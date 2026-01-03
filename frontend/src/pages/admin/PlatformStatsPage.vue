@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
+import { useAuthStore } from '@/stores/auth'
 import LineChart from '@/components/charts/LineChart.vue'
 import PieChart from '@/components/charts/PieChart.vue'
 import DateRangeFilter from '@/components/DateRangeFilter.vue'
@@ -18,9 +20,12 @@ import {
   BarChart3,
   Target,
   DollarSign,
+  AlertCircle,
 } from 'lucide-vue-next'
 
+const router = useRouter()
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
 const timelineData = ref(null)
 const loadingTimeline = ref(true)
 const selectedDays = ref(30)
@@ -29,8 +34,64 @@ const gamePerformanceMetrics = ref(null)
 const economyMetrics = ref(null)
 const transactionTypeData = ref(null)
 const recentActivity = ref(null)
+const authError = ref(null)
+
+// Helper function to get and validate auth token
+const getAuthToken = () => {
+  const token = sessionStorage.getItem('authToken')
+
+  if (!token) {
+    authError.value = 'Authentication token not found. Please log in again.'
+    console.error('Authentication token missing')
+    return null
+  }
+
+  return token
+}
+
+// Helper function to handle authentication errors
+const handleAuthError = (response, endpoint) => {
+  if (response.status === 401) {
+    authError.value = 'Your session has expired. Please log in again.'
+    console.error(`Unauthorized access to ${endpoint}: Token invalid or expired`)
+
+    // Redirect to login after a short delay
+    setTimeout(() => {
+      sessionStorage.removeItem('authToken')
+      sessionStorage.removeItem('currentUser')
+      router.push('/login')
+    }, 2000)
+
+    return true
+  }
+
+  if (response.status === 403) {
+    authError.value = 'You do not have permission to access this resource.'
+    console.error(`Forbidden access to ${endpoint}: Insufficient permissions`)
+    return true
+  }
+
+  return false
+}
 
 onMounted(async () => {
+  // Validate token before fetching any data
+  if (!getAuthToken()) {
+    setTimeout(() => {
+      router.push('/login')
+    }, 2000)
+    return
+  }
+
+  // Verify user is admin
+  if (!authStore.isAdmin) {
+    authError.value = 'Access denied. This page is only accessible to administrators.'
+    setTimeout(() => {
+      router.push('/')
+    }, 2000)
+    return
+  }
+
   adminStore.fetchStatistics()
   await fetchAllData()
 })
@@ -54,7 +115,12 @@ const handleDateChange = async (filterData) => {
 const fetchTimelineData = async () => {
   try {
     loadingTimeline.value = true
-    const token = sessionStorage.getItem('authToken')
+    const token = getAuthToken()
+
+    if (!token) {
+      loadingTimeline.value = false
+      return
+    }
 
     const response = await fetch(`/api/admin/statistics/timeline?days=${selectedDays.value}`, {
       headers: {
@@ -68,11 +134,16 @@ const fetchTimelineData = async () => {
       const data = await response.json()
       timelineData.value = data
     } else {
+      if (handleAuthError(response, 'timeline statistics')) {
+        return
+      }
       const errorText = await response.text()
       console.error('Failed to fetch timeline data:', response.status, errorText)
+      authError.value = `Failed to load timeline data: ${response.status}`
     }
   } catch (error) {
     console.error('Failed to fetch timeline data:', error)
+    authError.value = 'Network error while loading timeline data. Please check your connection.'
   } finally {
     loadingTimeline.value = false
   }
@@ -80,15 +151,20 @@ const fetchTimelineData = async () => {
 
 const fetchEngagementMetrics = async () => {
   try {
-    const token = sessionStorage.getItem('authToken')
+    const token = getAuthToken()
+    if (!token) return
+
     const response = await fetch(`/api/admin/statistics/engagement?days=${selectedDays.value}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
       },
     })
+
     if (response.ok) {
       engagementMetrics.value = await response.json()
+    } else if (!handleAuthError(response, 'engagement metrics')) {
+      console.error('Failed to fetch engagement metrics:', response.status)
     }
   } catch (error) {
     console.error('Failed to fetch engagement metrics:', error)
@@ -97,7 +173,9 @@ const fetchEngagementMetrics = async () => {
 
 const fetchGamePerformanceMetrics = async () => {
   try {
-    const token = sessionStorage.getItem('authToken')
+    const token = getAuthToken()
+    if (!token) return
+
     const response = await fetch(
       `/api/admin/statistics/game-performance?days=${selectedDays.value}`,
       {
@@ -107,8 +185,11 @@ const fetchGamePerformanceMetrics = async () => {
         },
       },
     )
+
     if (response.ok) {
       gamePerformanceMetrics.value = await response.json()
+    } else if (!handleAuthError(response, 'game performance metrics')) {
+      console.error('Failed to fetch game performance metrics:', response.status)
     }
   } catch (error) {
     console.error('Failed to fetch game performance metrics:', error)

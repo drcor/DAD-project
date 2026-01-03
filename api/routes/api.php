@@ -65,7 +65,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/matches/{id}', [MatchController::class, 'show']);
     
     // Admin routes - Only accessible by administrators
-    Route::prefix('admin')->group(function () {
+    // Protected by auth:sanctum (authentication) and admin (authorization) middleware
+    Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
         Route::get('/users', [AdminController::class, 'getAllUsers']);
         Route::get('/users/{userId}', [AdminController::class, 'getUser']);
         Route::post('/users', [AdminController::class, 'createAdmin']);

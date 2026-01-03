@@ -7,7 +7,12 @@
           <div>
             <h1 class="text-3xl font-bold text-gray-800">Multiplayer Lobby</h1>
             <p class="text-gray-600 mt-1">
-              <span v-if="authStore.isLoggedIn">Welcome, {{ authStore.currentUser?.name }}</span>
+              <span v-if="authStore.isLoggedIn">
+                Welcome, {{ authStore.currentUser?.name }}
+                <span class="ml-2 text-yellow-600 font-semibold">
+                  ({{ authStore.currentUser?.coins_balance || 0 }} coins)
+                </span>
+              </span>
               <span v-else class="text-red-500">Please log in to play multiplayer</span>
             </p>
           </div>
@@ -51,7 +56,7 @@
           <!-- Create Button -->
           <div class="flex items-end">
             <button
-              @click="createGame"
+              @click="handleCreateGame"
               :disabled="!authStore.isLoggedIn || isCreating"
               class="w-full px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
@@ -59,7 +64,19 @@
             </button>
           </div>
         </div>
-        <p v-if="!authStore.isLoggedIn" class="text-sm text-red-500">
+
+        <!-- Match info -->
+        <div
+          v-if="newGameConfig.type === 'match'"
+          class="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg"
+        >
+          <p class="text-sm text-purple-900">
+            <span class="font-semibold">Match Stakes:</span> You'll be asked to set a stake (3-100
+            coins per player) before creating the match.
+          </p>
+        </div>
+
+        <p v-if="!authStore.isLoggedIn" class="text-sm text-red-500 mt-3">
           You must be logged in to create games
         </p>
       </div>
@@ -112,6 +129,16 @@
                 <span class="font-medium">Variant:</span>
                 <span>Bisca de {{ game.variant }}</span>
               </div>
+
+              <!-- Show stake for matches -->
+              <div
+                v-if="game.type === 'match' && game.stake"
+                class="flex items-center gap-2 text-sm text-gray-600"
+              >
+                <span class="font-medium">Stake:</span>
+                <span class="text-yellow-600 font-semibold">{{ game.stake }} coins/player</span>
+              </div>
+
               <div class="flex items-center gap-2 text-sm text-gray-600">
                 <span class="font-medium">Status:</span>
                 <span class="text-green-600">● Waiting for player</span>
@@ -135,6 +162,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Match Stake Dialog -->
+    <MatchStakeDialog
+      v-model:isOpen="showStakeDialog"
+      :currentBalance="authStore.currentUser?.coins_balance || 0"
+      :initialStake="3"
+      @confirm="onStakeConfirmed"
+      @cancel="onStakeCancelled"
+    />
   </div>
 </template>
 
@@ -144,6 +180,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useGameStore } from '@/stores/game'
 import { useSocketStore } from '@/stores/socket'
+import MatchStakeDialog from '@/components/game/MatchStakeDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -157,6 +194,7 @@ const newGameConfig = ref({
 })
 const isCreating = ref(false)
 const isJoining = ref(false)
+const showStakeDialog = ref(false)
 
 // Initialize socket connection
 onMounted(() => {
@@ -199,19 +237,39 @@ onUnmounted(() => {
 })
 
 // Methods
-const createGame = () => {
+const handleCreateGame = () => {
   if (!authStore.isLoggedIn) {
     alert('Please log in to create games')
     return
   }
 
+  // If creating a match, show stake dialog first
+  if (newGameConfig.value.type === 'match') {
+    showStakeDialog.value = true
+  } else {
+    // For standalone games, create immediately
+    createGame(null)
+  }
+}
+
+const createGame = (stake) => {
   isCreating.value = true
-  socketStore.emitCreateGame(newGameConfig.value.variant, newGameConfig.value.type)
+  socketStore.emitCreateGame(newGameConfig.value.variant, newGameConfig.value.type, stake)
 
   // Reset after a delay (game-created event will navigate)
   setTimeout(() => {
     isCreating.value = false
   }, 2000)
+}
+
+const onStakeConfirmed = (stake) => {
+  console.log('[Lobby] Match stake confirmed:', stake)
+  createGame(stake)
+}
+
+const onStakeCancelled = () => {
+  console.log('[Lobby] Match stake cancelled')
+  // Do nothing, just close the dialog
 }
 
 const joinGame = (game) => {
