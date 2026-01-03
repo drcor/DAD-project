@@ -14,6 +14,29 @@ use Illuminate\Validation\Rule;
 class AdminController extends Controller
 {
     /**
+     * Validate and sanitize the 'days' parameter to prevent performance issues
+     * 
+     * @param Request $request
+     * @param int $default Default value (default: 30)
+     * @param int $min Minimum allowed value (default: 1)
+     * @param int $max Maximum allowed value (default: 365)
+     * @return int Validated days value
+     */
+    private function validateDaysParameter(Request $request, int $default = 30, int $min = 1, int $max = 365): int
+    {
+        $days = (int) $request->input('days', $default);
+        
+        // Ensure days is within a reasonable range to avoid performance issues
+        if ($days < $min) {
+            $days = $min;
+        } elseif ($days > $max) {
+            $days = $max;
+        }
+        
+        return $days;
+    }
+
+    /**
      * Get all users (players and administrators)
      * Optimized to prevent N+1 query problems
      */
@@ -437,7 +460,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         // User registrations timeline
@@ -494,7 +517,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         $transactions = CoinTransaction::selectRaw("
@@ -528,7 +551,7 @@ class AdminController extends Controller
         }
 
         $limit = $request->input('limit', 20);
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         // Top spenders (most coins spent)
@@ -590,7 +613,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         $games = Game::selectRaw("
@@ -627,7 +650,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         $matches = GameMatch::selectRaw("
@@ -663,7 +686,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         $registrations = User::selectRaw("
@@ -680,15 +703,21 @@ class AdminController extends Controller
             ->get();
 
         // Calculate active users per period
-        $activeUsers = Game::selectRaw("
-                DATE(began_at) as period,
-                COUNT(DISTINCT player1_user_id) + COUNT(DISTINCT player2_user_id) as active_users
-            ")
-            ->where('began_at', '>=', $startDate)
-            ->whereNotNull('began_at')
-            ->groupBy('period')
-            ->orderBy('period')
-            ->get();
+        // Use UNION to avoid double-counting users who played as both player1 and player2
+        $activeUsers = DB::select("
+            SELECT period, COUNT(DISTINCT user_id) as active_users
+            FROM (
+                SELECT DATE(began_at) as period, player1_user_id as user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+                UNION
+                SELECT DATE(began_at) as period, player2_user_id as user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+            ) AS user_periods
+            GROUP BY period
+            ORDER BY period
+        ", [$startDate, $startDate]);
 
         return response()->json([
             'registrations_by_period' => $registrations,
@@ -707,7 +736,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         // Average games per user (active users only)
@@ -737,22 +766,50 @@ class AdminController extends Controller
             : 0;
 
         // DAU/WAU/MAU (Daily/Weekly/Monthly Active Users)
-        $dauQuery = Game::selectRaw("COUNT(DISTINCT player1_user_id) + COUNT(DISTINCT player2_user_id) as count")
-            ->where('began_at', '>=', now()->subDay()->startOfDay())
-            ->whereNotNull('began_at')
-            ->first();
+        // Use UNION to avoid double-counting users who played as both player1 and player2
+        $dauStart = now()->subDay()->startOfDay();
+        $dauQuery = DB::selectOne("
+            SELECT COUNT(DISTINCT user_id) AS count
+            FROM (
+                SELECT player1_user_id AS user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+                UNION
+                SELECT player2_user_id AS user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+            ) AS user_ids
+        ", [$dauStart, $dauStart]);
         $dau = $dauQuery ? $dauQuery->count : 0;
 
-        $wauQuery = Game::selectRaw("COUNT(DISTINCT player1_user_id) + COUNT(DISTINCT player2_user_id) as count")
-            ->where('began_at', '>=', now()->subDays(7)->startOfDay())
-            ->whereNotNull('began_at')
-            ->first();
+        $wauStart = now()->subDays(7)->startOfDay();
+        $wauQuery = DB::selectOne("
+            SELECT COUNT(DISTINCT user_id) AS count
+            FROM (
+                SELECT player1_user_id AS user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+                UNION
+                SELECT player2_user_id AS user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+            ) AS user_ids
+        ", [$wauStart, $wauStart]);
         $wau = $wauQuery ? $wauQuery->count : 0;
 
-        $mauQuery = Game::selectRaw("COUNT(DISTINCT player1_user_id) + COUNT(DISTINCT player2_user_id) as count")
-            ->where('began_at', '>=', now()->subDays(30)->startOfDay())
-            ->whereNotNull('began_at')
-            ->first();
+        $mauStart = now()->subDays(30)->startOfDay();
+        $mauQuery = DB::selectOne("
+            SELECT COUNT(DISTINCT user_id) AS count
+            FROM (
+                SELECT player1_user_id AS user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+                UNION
+                SELECT player2_user_id AS user_id
+                FROM games
+                WHERE began_at >= ? AND began_at IS NOT NULL
+            ) AS user_ids
+        ", [$mauStart, $mauStart]);
         $mau = $mauQuery ? $mauQuery->count : 0;
 
         // User retention rate (users who registered and played in the period)
@@ -762,11 +819,12 @@ class AdminController extends Controller
 
         $retainedUsersCount = User::where('type', 'P')
             ->where('created_at', '>=', $startDate)
-            ->whereHas('gamesAsPlayer1', function($query) use ($startDate) {
-                $query->where('began_at', '>=', $startDate);
-            })
-            ->orWhereHas('gamesAsPlayer2', function($query) use ($startDate) {
-                $query->where('began_at', '>=', $startDate);
+            ->where(function ($query) use ($startDate) {
+                $query->whereHas('gamesAsPlayer1', function ($gameQuery) use ($startDate) {
+                    $gameQuery->where('began_at', '>=', $startDate);
+                })->orWhereHas('gamesAsPlayer2', function ($gameQuery) use ($startDate) {
+                    $gameQuery->where('began_at', '>=', $startDate);
+                });
             })
             ->count();
 
@@ -793,7 +851,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         // Average game duration
@@ -820,7 +878,7 @@ class AdminController extends Controller
                 COUNT(*) as total_completed_games
             ")
             ->where('began_at', '>=', $startDate)
-            ->where('status', 'E')
+            ->where('status', 'Ended')
             ->first();
 
         $capoteRate = $specialVictories && $specialVictories->total_completed_games > 0
@@ -831,7 +889,7 @@ class AdminController extends Controller
             ? ($specialVictories->total_bandeiras / $specialVictories->total_completed_games) * 100
             : 0;
 
-        // Win rate distributions (per user) - Optimized to use SQL instead of loading all users
+        // Win rate distributions (per user) - Filter after loading to avoid HAVING issues with SQLite
         $winRates = User::where('type', 'P')
             ->withCount([
                 'gamesWon' => function($query) use ($startDate) {
@@ -844,8 +902,11 @@ class AdminController extends Controller
                     $query->where('began_at', '>=', $startDate);
                 }
             ])
-            ->havingRaw('(games_as_player1_count + games_as_player2_count) > 0')
             ->get()
+            ->filter(function($user) {
+                // Only include users who played at least one game
+                return ($user->games_as_player1_count + $user->games_as_player2_count) > 0;
+            })
             ->map(function($user) {
                 $totalGames = $user->games_as_player1_count + $user->games_as_player2_count;
                 return [
@@ -882,7 +943,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         // Coin velocity (transactions per user per period)
@@ -999,7 +1060,7 @@ class AdminController extends Controller
             ], 403);
         }
 
-        $days = $request->input('days', 30);
+        $days = $this->validateDaysParameter($request);
         $startDate = now()->subDays($days)->startOfDay();
 
         // Transactions by type with names
@@ -1011,12 +1072,12 @@ class AdminController extends Controller
             ")
             ->where('transaction_datetime', '>=', $startDate)
             ->groupBy('coin_transaction_type_id')
-            ->with('transactionType:id,name')
+            ->with('type:id,name')
             ->get()
             ->map(function($transaction) {
                 return [
                     'type_id' => $transaction->coin_transaction_type_id,
-                    'type_name' => $transaction->transactionType->name ?? 'Unknown',
+                    'type_name' => $transaction->type->name ?? 'Unknown',
                     'count' => $transaction->count,
                     'total_coins' => $transaction->total_coins,
                     'average_coins' => round($transaction->average_coins, 2),

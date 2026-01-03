@@ -48,16 +48,27 @@ class MatchTransactionController extends Controller
     /**
      * Deduct match stake from both players
      * POST /api/matches/transactions/stake
+     * 
+     * SECURITY: This endpoint is restricted to internal API calls only (WebSocket server)
+     * User authentication is NOT sufficient - must use internal API key
      */
     public function deductStake(Request $request)
     {
         try {
-            // Authenticate request (user or internal API key)
-            $this->authenticateRequest($request);
-            $user = $request->user(); // May be null for internal API calls
+            // SECURITY: Only allow internal API key (WebSocket server), NOT user tokens
+            $apiKey = $request->header('X-Internal-API-Key');
+            $expectedKey = config('app.internal_api_key');
+            
+            if (!$apiKey || !$expectedKey || $apiKey !== $expectedKey) {
+                Log::warning('[Security] Unauthorized stake deduction attempt', [
+                    'ip' => $request->ip(),
+                    'user_id' => $request->user()?->id,
+                ]);
+                throw new \Exception('Unauthorized. This endpoint is restricted to internal service calls.');
+            }
 
             $validated = $request->validate([
-                'match_id' => 'required|integer', // Match might not exist in DB yet (websocket matches)
+                'match_id' => 'required|integer|exists:matches,id', // MUST exist in DB
                 'player1_id' => 'required|integer|exists:users,id',
                 'player2_id' => 'required|integer|exists:users,id',
                 'stake' => 'required|integer|min:3|max:100',
@@ -68,50 +79,46 @@ class MatchTransactionController extends Controller
             $player2 = User::findOrFail($validated['player2_id']);
             $stake = $validated['stake'];
 
-            // Try to load match if it exists in the database
-            // For WebSocket matches, the match_id might be an in-memory ID that doesn't exist in DB yet
-            // or might accidentally collide with an existing DB match ID
-            $match = GameMatch::find($matchId);
+            // SECURITY: Load match from database - it MUST exist
+            $match = GameMatch::findOrFail($matchId);
 
-            // If match exists AND has matching players, enforce server-side consistency
-            // If match exists but players DON'T match, it's a WebSocket ID collision - ignore the DB match
-            if ($match) {
-                $playersMatch = (
-                    $match->player1_user_id === $player1->id &&
-                    $match->player2_user_id === $player2->id
-                );
-
-                if ($playersMatch) {
-                    // This is the actual match - enforce validation
-                    if ($match->stakes_deducted) {
-                        throw new \Exception('Stakes already deducted for this match');
-                    }
-
-                    // Verify stake matches server-side agreement (if stored)
-                    if (isset($match->stake) && $match->stake !== $stake) {
-                        throw new \Exception('Stake does not match agreed amount');
-                    }
-                } else {
-                    // Players don't match - this is a WebSocket ID collision, not the real match
-                    // Treat it as if the match doesn't exist yet
-                    $match = null;
-                }
+            // SECURITY: Verify players match the database match record
+            if ($match->player1_user_id !== $player1->id || $match->player2_user_id !== $player2->id) {
+                Log::error('[Security] Player mismatch in stake deduction', [
+                    'match_id' => $matchId,
+                    'expected' => [$match->player1_user_id, $match->player2_user_id],
+                    'provided' => [$player1->id, $player2->id],
+                ]);
+                throw new \Exception('Player IDs do not match the match record');
             }
 
-            // Verify requesting user is a participant (skip for internal API calls)
-            if ($user && !in_array($user->id, [$player1->id, $player2->id], true)) {
-                throw new \Exception('You are not a participant of this match');
+            // SECURITY: Verify stakes haven't already been deducted
+            if ($match->stakes_deducted) {
+                throw new \Exception('Stakes already deducted for this match');
+            }
+
+            // SECURITY: Verify stake amount matches database record
+            if ($match->stake !== $stake) {
+                Log::error('[Security] Stake amount mismatch', [
+                    'match_id' => $matchId,
+                    'expected' => $match->stake,
+                    'provided' => $stake,
+                ]);
+                throw new \Exception('Stake amount does not match match record');
+            }
+
+            // SECURITY: Verify match is in correct state (not already ended)
+            if ($match->status === 'Ended') {
+                throw new \Exception('Cannot deduct stakes from ended match');
             }
 
             // Deduct stake from both players
             $transaction1 = $this->transactionService->deductMatchStake($player1, $stake, $matchId);
             $transaction2 = $this->transactionService->deductMatchStake($player2, $stake, $matchId);
 
-            // Mark stakes as deducted (if match exists)
-            if ($match) {
-                $match->stakes_deducted = true;
-                $match->save();
-            }
+            // Mark stakes as deducted
+            $match->stakes_deducted = true;
+            $match->save();
 
             Log::info('Match stakes deducted', [
                 'match_id' => $matchId,

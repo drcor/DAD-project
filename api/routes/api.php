@@ -30,8 +30,11 @@ Route::post('/matches/transactions/stake', [MatchTransactionController::class, '
 Route::post('/matches/transactions/payout', [MatchTransactionController::class, 'awardPayout']);
 
 // Public statistics/leaderboards (no auth required - anyone can view)
-Route::get('/statistics', [StatisticsController::class, 'index']);
-Route::get('/statistics/timeline', [StatisticsController::class, 'timeline']);
+// Rate limited to prevent abuse: 60 requests per minute per IP
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/statistics', [StatisticsController::class, 'index']);
+    Route::get('/statistics/timeline', [StatisticsController::class, 'timeline']);
+});
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
