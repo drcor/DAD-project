@@ -65,6 +65,12 @@ export const useSocketStore = defineStore('socket', () => {
             // This event will be handled by individual pages that need to redirect
         })
 
+        socket.on('game-cancelled', (data) => {
+            console.log(`[Socket] Game cancelled:`, data)
+            // Refresh the game list to remove the cancelled game
+            socket.emit('get-games')
+        })
+
         socket.on('game-state', (state) => {
             console.log(`[Socket] Game state received:`, state)
             gameStore.setMultiplayerGame(state)
@@ -131,6 +137,11 @@ export const useSocketStore = defineStore('socket', () => {
         socket.emit('start-next-match-game', { gameId: gameID })
     }
 
+    const emitCancelGame = (gameID) => {
+        console.log(`[Socket] Cancelling game ${gameID}`)
+        socket.emit('cancel-game', { gameId: gameID })
+    }
+
     const emitFlipCard = (gameID, card) => { socket.emit('flip-card', gameID, card) }
 
     return {
@@ -147,6 +158,7 @@ export const useSocketStore = defineStore('socket', () => {
         emitResign,
         emitLeaveGame,
         emitStartNextMatchGame,
+        emitCancelGame,
         emitFlipCard,
     }
 })

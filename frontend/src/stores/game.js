@@ -82,6 +82,7 @@ export const useGameStore = defineStore('game', () => {
   // Multiplayer state
   const availableGames = ref([]) // List of games in lobby
   const currentGameId = ref(null) // Current multiplayer game ID
+  const gameCreator = ref(null) // Creator's user ID
   const opponentName = ref(null) // Opponent's name
   const isWaitingForOpponent = ref(false) // Waiting for second player
   const player1Id = ref(null) // User ID of player 1
@@ -564,6 +565,7 @@ export const useGameStore = defineStore('game', () => {
     deck.value = game.deck || []
     handSize.value = game.variant || 9
     gameType.value = game.type || 'standalone'
+    gameCreator.value = game.creator || null // Store creator ID
 
     // Backend sends myHand/opponentHand based on player perspective
     hand1.value = game.myHand || []
@@ -643,6 +645,7 @@ export const useGameStore = defineStore('game', () => {
       id: currentGameId.value,
       variant: handSize.value,
       type: gameType.value,
+      creator: gameCreator.value, // Creator's user ID
       deck: deck.value,
       trump: trump.value,
       myHand: hand1.value,

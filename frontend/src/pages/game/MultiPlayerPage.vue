@@ -205,9 +205,20 @@
             : 'Waiting for another player to join...'
         }}
       </p>
-      <button @click="leaveGame" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
-        Leave Game
-      </button>
+      <div class="flex gap-2 justify-center">
+        <button
+          v-if="
+            multiplayerGame?.creator === authStore.currentUserID && !multiplayerGame?.opponentName
+          "
+          @click="cancelGame"
+          class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Cancel Game
+        </button>
+        <button @click="leaveGame" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">
+          Leave Game
+        </button>
+      </div>
     </div>
   </div>
 
@@ -593,5 +604,24 @@ const leaveGame = () => {
   const gameId = parseInt(route.params.id)
   socketStore.emitLeaveGame(gameId)
   router.push('/game/lobby')
+}
+
+const cancelGame = () => {
+  if (!confirm('Are you sure you want to cancel this game?')) {
+    return
+  }
+
+  const gameId = parseInt(route.params.id)
+  socketStore.emitCancelGame(gameId)
+
+  // Listen for game-cancelled event
+  socketStore.socket.once('game-cancelled', () => {
+    router.push('/game/lobby')
+  })
+
+  // Also handle error
+  socketStore.socket.once('error', (error) => {
+    alert(error.message || 'Failed to cancel game')
+  })
 }
 </script>

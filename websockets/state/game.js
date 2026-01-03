@@ -69,6 +69,16 @@ const generateCards = () => {
 }
 
 export const createGame = (user, options = {}) => {
+    // Limit: Check how many "waiting" games this player already has
+    const MAX_PENDING_GAMES = 3; // Maximum pending games per player
+    const userPendingGames = Array.from(games.values()).filter(
+        g => g.status === 'waiting' && g.creator === user.id
+    );
+
+    if (userPendingGames.length >= MAX_PENDING_GAMES) {
+        throw new Error(`You already have ${MAX_PENDING_GAMES} pending games. Please join or cancel existing games first.`);
+    }
+
     currentGameID++
 
     const variant = options.variant || 9 // 3 or 9 cards
@@ -926,6 +936,60 @@ export const persistGameToDatabase = async (game, options = {}) => {
     } catch (error) {
         console.error(`[Persistence] Failed to persist game ${game.id}:`, error.message)
     }
+}
+
+/**
+ * Cancel a pending game (only creator can cancel, only if still waiting)
+ * @param {number} gameID 
+ * @param {number} userId 
+ * @returns {boolean} true if cancelled, false otherwise
+ */
+export const cancelGame = (gameID, userId) => {
+    const game = games.get(gameID)
+
+    if (!game) {
+        console.log(`[cancelGame] Game ${gameID} not found`)
+        return false
+    }
+
+    // Only allow cancellation if game is still waiting
+    if (game.status !== 'waiting') {
+        console.log(`[cancelGame] Game ${gameID} cannot be cancelled - status: ${game.status}`)
+        return false
+    }
+
+    // Only creator can cancel
+    if (game.creator !== userId) {
+        console.log(`[cancelGame] User ${userId} cannot cancel game ${gameID} - not creator`)
+        return false
+    }
+
+    // Remove game from the map
+    games.delete(gameID)
+    console.log(`[cancelGame] Game ${gameID} cancelled by user ${userId}`)
+    return true
+}
+
+/**
+ * Get count of pending games for a user
+ * @param {number} userId 
+ * @returns {number}
+ */
+export const getUserPendingGamesCount = (userId) => {
+    return Array.from(games.values()).filter(
+        g => g.status === 'waiting' && g.creator === userId
+    ).length
+}
+
+/**
+ * Get list of pending games for a user
+ * @param {number} userId 
+ * @returns {Array}
+ */
+export const getUserPendingGames = (userId) => {
+    return Array.from(games.values()).filter(
+        g => g.status === 'waiting' && g.creator === userId
+    )
 }
 
 // Export timer functions

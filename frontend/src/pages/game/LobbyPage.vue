@@ -146,17 +146,21 @@
             </div>
 
             <button
+              v-if="game.creator !== authStore.currentUserID"
               @click="joinGame(game)"
-              :disabled="isJoining || game.creator === authStore.currentUserID"
+              :disabled="isJoining"
               class="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              {{
-                game.creator === authStore.currentUserID
-                  ? 'Your Game'
-                  : isJoining
-                    ? 'Joining...'
-                    : 'Join Game'
-              }}
+              {{ isJoining ? 'Joining...' : 'Join Game' }}
+            </button>
+
+            <button
+              v-else
+              @click="cancelGame(game.id)"
+              :disabled="isCancelling"
+              class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {{ isCancelling ? 'Cancelling...' : 'Cancel Game' }}
             </button>
           </div>
         </div>
@@ -194,6 +198,7 @@ const newGameConfig = ref({
 })
 const isCreating = ref(false)
 const isJoining = ref(false)
+const isCancelling = ref(false)
 const showStakeDialog = ref(false)
 
 // Initialize socket connection
@@ -290,5 +295,24 @@ const joinGame = (game) => {
   setTimeout(() => {
     router.push(`/game/multiplayer/${game.id}`)
   }, 500)
+}
+
+const cancelGame = (gameId) => {
+  if (!authStore.isLoggedIn) {
+    alert('Please log in to cancel games')
+    return
+  }
+
+  if (!confirm('Are you sure you want to cancel this game?')) {
+    return
+  }
+
+  isCancelling.value = true
+  socketStore.emitCancelGame(gameId)
+
+  // Reset after a delay
+  setTimeout(() => {
+    isCancelling.value = false
+  }, 1000)
 }
 </script>

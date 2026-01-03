@@ -11,7 +11,10 @@ import {
     resignGame,
     prepareNextMatchGame,
     startMoveTimer,
-    clearMoveTimer
+    clearMoveTimer,
+    cancelGame,
+    getUserPendingGamesCount,
+    getUserPendingGames
 } from "../state/game.js"
 
 /**
@@ -28,6 +31,7 @@ const getGameStateForPlayer = (game, playerId) => {
         status: game.status,
         currentPlayer: game.currentPlayer,
         isMyTurn: game.currentPlayer === playerId,
+        creator: game.creator, // Add creator ID
 
         // Cards - hide opponent's hand
         deck: game.deck.map(c => ({ ...c })), // Just show count, not actual cards
@@ -470,6 +474,76 @@ export const handleGameEvents = (io, socket) => {
         } catch (error) {
             console.error('[Game] Error starting next match game:', error)
             socket.emit('error', { message: 'Failed to start next game' })
+        }
+    })
+
+    /**
+     * Cancel a pending game
+     * Expects: { gameId: number }
+     */
+    socket.on('cancel-game', (data) => {
+        try {
+            const { gameId } = data
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const success = cancelGame(gameId, user.id)
+
+            if (!success) {
+                socket.emit('error', { message: 'Cannot cancel game - it may have already started or you are not the creator' })
+                return
+            }
+
+            console.log(`[Game] ${user.name} cancelled game ${gameId}`)
+
+            // Leave the game room
+            socket.leave(`game-${gameId}`)
+
+            // Notify the user
+            socket.emit('game-cancelled', { gameId })
+
+            // Broadcast updated game list to all clients
+            io.emit('games', getGames())
+
+        } catch (error) {
+            console.error('[Game] Error cancelling game:', error)
+            socket.emit('error', { message: 'Failed to cancel game' })
+        }
+    })
+
+    /**
+     * Get user's pending games count
+     */
+    socket.on('get-pending-games-count', () => {
+        try {
+            const user = getUser(socket.id)
+
+            if (!user) {
+                socket.emit('error', { message: 'User not authenticated' })
+                return
+            }
+
+            const count = getUserPendingGamesCount(user.id)
+            const games = getUserPendingGames(user.id)
+
+            socket.emit('pending-games-count', {
+                count,
+                games: games.map(g => ({
+                    id: g.id,
+                    variant: g.variant,
+                    type: g.type,
+                    stake: g.stake,
+                    createdAt: g.beganAt
+                }))
+            })
+
+        } catch (error) {
+            console.error('[Game] Error getting pending games count:', error)
+            socket.emit('error', { message: 'Failed to get pending games count' })
         }
     })
 }
