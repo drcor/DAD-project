@@ -725,7 +725,10 @@ const gameTypeChartData = computed(() => {
                     </span>
                   </div>
                   <div class="text-xs text-gray-500">
-                    {{ tx.transaction_type?.name || 'Unknown' }}
+                    {{ tx.type?.name || 'Unknown' }}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ tx.user?.name || 'Unknown' }}
                   </div>
                 </div>
                 <p v-if="!recentActivity.transactions.data?.length" class="text-sm text-gray-400">

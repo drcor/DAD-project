@@ -1,7 +1,5 @@
 import axios from 'axios'
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000/api'
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || ''
+import { config } from '../config.js'
 
 /**
  * HTTP client for communicating with Laravel API
@@ -9,11 +7,11 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || ''
 class ApiClient {
     constructor() {
         this.client = axios.create({
-            baseURL: API_BASE_URL,
+            baseURL: config.apiBaseUrl,
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-Internal-API-Key': INTERNAL_API_KEY
+                'X-Internal-API-Key': config.internalApiKey
             }
         })
     }
@@ -28,7 +26,7 @@ class ApiClient {
             const payload = this.formatGameData(gameData)
             const response = await this.client.post('/games/persist', payload, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Game saved successfully:', response.data)
@@ -52,7 +50,7 @@ class ApiClient {
             const payload = this.formatMatchData(matchData)
             const response = await this.client.post('/matches/persist', payload, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Match saved successfully:', response.data)
@@ -81,7 +79,7 @@ class ApiClient {
                 player2_id: player2Id
             }, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Game fees deducted successfully:', response.data)
@@ -110,7 +108,7 @@ class ApiClient {
                 points: points
             }, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Game payout awarded successfully:', response.data)
@@ -139,7 +137,7 @@ class ApiClient {
                 player2_id: player2Id
             }, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Game draw refunded successfully:', response.data)
@@ -170,7 +168,7 @@ class ApiClient {
                 stake: stake
             }, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Match stakes deducted successfully:', response.data)
@@ -199,7 +197,7 @@ class ApiClient {
                 total_stake: totalStake
             }, {
                 headers: {
-                    'X-Internal-API-Key': INTERNAL_API_KEY
+                    'X-Internal-API-Key': config.internalApiKey
                 }
             })
             console.log('[ApiClient] Match payout awarded successfully:', response.data)

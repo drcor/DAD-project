@@ -6,5 +6,21 @@
 :80 {
 	root * public/
 	encode zstd br gzip
+	
+	# Serve static files directly (including storage)
+	@static {
+		file
+		path *.ico *.css *.js *.gif *.jpg *.jpeg *.png *.svg *.woff *.woff2 *.ttf *.eot
+	}
+	handle @static {
+		file_server
+	}
+	
+	# Handle storage files
+	handle /storage/* {
+		file_server
+	}
+	
+	# PHP for everything else
 	php_server
 }

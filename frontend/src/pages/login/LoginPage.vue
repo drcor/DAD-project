@@ -69,8 +69,8 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const formData = ref({
-  email: 'pa@mail.pt',
-  password: '123',
+  email: '',
+  password: '',
 })
 
 const handleSubmit = async () => {
