@@ -17,5 +17,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN composer install 
 
+# Create necessary storage directories
+RUN mkdir -p /app/storage/app/public/photos_avatars \
+    && mkdir -p /app/storage/framework/cache \
+    && mkdir -p /app/storage/framework/sessions \
+    && mkdir -p /app/storage/framework/views \
+    && mkdir -p /app/storage/logs
+
+# Create storage symbolic link for public access to uploaded files
+RUN rm -rf /app/public/storage \
+    && php artisan storage:link
+
 RUN chown -R www-data:www-data /app \
-    && chmod -R 755 /app/storage
+    && chmod -R 775 /app/storage \
+    && chmod -R 775 /app/bootstrap/cache

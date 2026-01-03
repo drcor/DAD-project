@@ -1,23 +1,29 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { io } from 'socket.io-client'
+import axios from 'axios'
 
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from './stores/auth'
+import { API_BASE_URL, WS_CONNECTION } from './config/api'
 
-const apiDomain = import.meta.env.VITE_API_DOMAIN
-const wsConnection = import.meta.env.VITE_WS_CONNECTION
+// Configure axios with the API base URL
+axios.defaults.baseURL = API_BASE_URL
 
-console.log('[main.js] api domain', apiDomain)
-console.log('[main.js] ws connection', wsConnection)
 
 const app = createApp(App)
 
-app.provide('socket', io(wsConnection))
-app.provide('serverBaseURL', `http://${apiDomain}`)
-app.provide('apiBaseURL', `http://${apiDomain}/api`)
+app.provide('socket', io(WS_CONNECTION))
+app.provide('serverBaseURL', API_BASE_URL)
+app.provide('apiBaseURL', `${API_BASE_URL}/api`)
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 
 app.mount('#app')
+
+// Restore session after app is mounted
+const authStore = useAuthStore()
+authStore.restoreSession()

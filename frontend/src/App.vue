@@ -2,9 +2,11 @@
   <Toaster richColors />
   <nav class="max-w-full p-5 flex flex-row justify-between align-middle">
     <div class="align-middle text-xl">
-      <RouterLink to="/"> {{ pageTitle }} </RouterLink>
-      <span class="text-xs" v-if="authStore.currentUser">&nbsp;&nbsp;&nbsp;
-        ({{ authStore.currentUser?.name }})
+      <RouterLink :to="authStore.isAdmin ? '/admin/statistics' : '/'">
+        {{ pageTitle }}
+      </RouterLink>
+      <span class="text-xs" v-if="authStore.currentUser"
+        >&nbsp;&nbsp;&nbsp; ({{ authStore.currentUser?.name }})
       </span>
     </div>
     <NavBar @logout="logout" :userLoggedIn="authStore.isLoggedIn" />
@@ -17,41 +19,42 @@
 </template>
 
 <script setup>
-import { RouterLink, RouterView } from 'vue-router';
-import { toast } from 'vue-sonner';
+import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { toast } from 'vue-sonner'
 import 'vue-sonner/style.css'
-import { ref, onMounted } from 'vue';
+import { ref, onMounted } from 'vue'
 import { Toaster } from '@/components/ui/sonner'
-import NavBar from './components/layout/NavBar.vue';
-import { useAuthStore } from './stores/auth';
-import { useSocketStore } from './stores/socket';
+import NavBar from './components/layout/NavBar.vue'
+import { useAuthStore } from './stores/auth'
+// import { useSocketStore } from './stores/socket';
 
 const authStore = useAuthStore()
-const socketStore = useSocketStore()
-
+// const socketStore = useSocketStore()
 
 const year = new Date().getFullYear()
 const pageTitle = ref(`DAD ${year}/${String(year + 1).slice(-2)}`)
 
+const router = useRouter()
 
-
-const logout = () => {
-
-  toast.promise(authStore.logout(), {
-    loading: 'Calling API',
-    success: () => {
-      return 'Logout Sucessfull '
-    },
-    error: (data) => `[API] Error saving game - ${data?.response?.data?.message}`,
-  })
-
+const logout = async () => {
+  try {
+    await toast.promise(authStore.logout(), {
+      loading: 'Logging out...',
+      success: () => {
+        return 'Logout successful!'
+      },
+      error: (data) => `Logout failed - ${data?.response?.data?.message || 'Unknown error'}`,
+    })
+    // Redirect to home page after successful logout
+    router.push('/')
+  } catch (error) {
+    console.error('Logout error:', error)
+  }
 }
 
 onMounted(() => {
-  socketStore.handleConnection()
+  // socketStore.handleConnection()
 })
-
-
 </script>
 
-<style></style>`
+<style></style>

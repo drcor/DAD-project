@@ -1,8 +1,8 @@
 import { serverStart } from "./server.js";
+import { config } from "./config.js";
 
-const PORT = process.env.PORT || 3000;
+serverStart(config.port);
 
-serverStart(PORT);
+console.log(`🚀 Socket.io server running on port ${config.port}`);
+console.log("⏳ Waiting for connections...");
 
-console.log(`Socket.io server running on port ${PORT}`);
-console.log("Waiting for connections...");
